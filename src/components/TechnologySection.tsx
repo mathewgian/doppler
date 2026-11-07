@@ -29,7 +29,6 @@ const TechnologySection = () => {
   return <section id="technology" className="tech-page scroll-mt-8" aria-label="The science of sound">
       <section className="tech-explorer tech-explorer-first">
         <h2>The Science of Sound</h2>
-        <DopplerExplorer />
       </section>
 
       <section className="tech-steps">
@@ -41,6 +40,10 @@ const TechnologySection = () => {
           </div>
           <ConceptDiagram concept={concept} />
         </article>)}
+      </section>
+
+      <section className="tech-explorer" aria-label="Interactive airplane Doppler visual">
+        <DopplerExplorer />
       </section>
 
       <section className="tech-limits">
