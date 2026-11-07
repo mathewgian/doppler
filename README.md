@@ -1,6 +1,6 @@
-# EchoMap
+# Doppler
 
-make me a website with soft colours, cream and green tones for an off grid camping booking service, all integrated with a working booking system, lots of imagery, make it look like a framer website with smooth scroll, smooth hover states
+An open source tool that pinpoints the geographic location of an audio recording by analyzing the Doppler shift of background airplane noise.
 
 This project was built with [Lovable](https://lovable.dev).
 
