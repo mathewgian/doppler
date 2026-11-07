@@ -1,5 +1,5 @@
 # Audio locator
-- [ ] Make Explore the demo exclusively open the cinematic hiker recording/zoom/search; remove the inline hiker section and verify clearly visible moving aircraft, Doppler curve and narrowing region.
+- [x] Explore the demo opens cinematic hiker audio/zoom/search; inline hiker section removed. Verified actual hosted recording with local delivery interception, natural audio end, aircraft movement, radius 1775→397→25 m, exact reveal, restart/skip, mobile and no runtime errors.
 - [x] Implement fullscreen audio → black fade → Earth zoom → simulated flight/search → configured hiker reveal; tested natural audio end, skip/restart/close, no live calls and mobile. Local asset delivery mocked from the actual hosted recordings for browser checks.
 - [x] Replace flat image spin with a globe rotating around its polar axis; verified desktop/mobile, reduced motion and existing map transition/reset.
 - [x] Align transmitting label with the account note and slowly spin the globe; verified layout and reduced motion.
