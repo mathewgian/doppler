@@ -1,18 +1,43 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, AudioLines, Check, FileAudio, Loader2, Mic, RotateCcw, ShieldCheck, Square, Upload, X, MapPin } from "lucide-react";
+import { ArrowRight, AudioLines, Check, Clock, FileAudio, Loader2, MapPin, Mic, Plane, RotateCcw, ShieldCheck, Square, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LocatorMap, { ICICS } from "./LocatorMap";
+import ResultMap from "./ResultMap";
+import SpectrogramView from "./SpectrogramView";
+import { AnalysisError, STAGE_LABELS, analyzeRecording, type AnalysisReport, type Stage } from "@/lib/acoustics/pipeline";
+
+const ACCURACY = [
+  { value: 5, label: "Exact (±5 s)" },
+  { value: 30, label: "Within 30 seconds" },
+  { value: 120, label: "Within 2 minutes" },
+  { value: 300, label: "Within 5 minutes" },
+];
+
+const toLocalInput = (ms: number) => {
+  const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000);
+  return d.toISOString().slice(0, 19);
+};
+const fmtCoord = (lat: number, lon: number) => `${Math.abs(lat).toFixed(4)}° ${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(4)}° ${lon >= 0 ? "E" : "W"}`;
+const fmtClock = (unix: number) => new Date(unix * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+type Audio = { name: string; url: string; blob: Blob };
 
 export default function AudioWorkspace({ demoRequest }: { demoRequest: number }) {
-  const [audio, setAudio] = useState<{ name: string; url: string } | null>(null);
+  const [audio, setAudio] = useState<Audio | null>(null);
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState("");
   const [dragging, setDragging] = useState(false);
-  const [stage, setStage] = useState<"ready" | "running" | "result">("ready");
+  const [stage, setStage] = useState<"ready" | "running" | "demo" | "result">("ready");
+  const [runStage, setRunStage] = useState<{ s: Stage; p?: number }>({ s: "decode" });
+  const [report, setReport] = useState<AnalysisReport | null>(null);
+  const [startAt, setStartAt] = useState("");
+  const [timeSource, setTimeSource] = useState<"file" | "recording" | "">("");
+  const [accuracy, setAccuracy] = useState(300);
   const input = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
+  const recordStart = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => () => { if (audio?.url) URL.revokeObjectURL(audio.url); }, [audio]);
@@ -29,8 +54,8 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
   }, [recording]);
   useEffect(() => {
     if (!demoRequest) return;
-    setStage("running");
-    timer.current = setTimeout(() => setStage("result"), 1800);
+    setStage("running"); setRunStage({ s: "search", p: 0.6 });
+    timer.current = setTimeout(() => setStage("demo"), 1800);
     return () => { if (timer.current) clearTimeout(timer.current); };
   }, [demoRequest]);
 
@@ -38,8 +63,16 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
     if (!file.type.startsWith("audio/") && !/\.(mp3|wav|m4a|ogg|webm|aac|flac)$/i.test(file.name)) {
       setError("Please choose an audio recording or voice memo."); return;
     }
-    setError(""); setStage("ready");
-    setAudio({ name: file.name, url: URL.createObjectURL(file) });
+    setError(""); setStage("ready"); setReport(null);
+    const url = URL.createObjectURL(file);
+    setAudio({ name: file.name, url, blob: file });
+    // a voice memo's "last modified" time is usually when recording stopped
+    const probe = new Audio(url);
+    probe.onloadedmetadata = () => {
+      const dur = isFinite(probe.duration) ? probe.duration : 0;
+      setStartAt(toLocalInput(file.lastModified - dur * 1000)); setTimeSource("file"); setAccuracy(300);
+    };
+    probe.onerror = () => { setStartAt(toLocalInput(file.lastModified)); setTimeSource("file"); };
   };
   const startRecording = async () => {
     setError("");
@@ -47,7 +80,7 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
       setError("Recording is not supported in this browser. Upload a voice memo instead."); return;
     }
     try {
-      const media = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const media = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
       stream.current = media;
       const next = new MediaRecorder(media);
       recorder.current = next;
@@ -55,38 +88,95 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
       next.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
       next.onstop = () => {
         const blob = new Blob(chunks, { type: next.mimeType });
-        setAudio({ name: "Microphone recording", url: URL.createObjectURL(blob) });
-        setStage("ready"); setRecording(false);
+        setAudio({ name: "Microphone recording", url: URL.createObjectURL(blob), blob });
+        setStartAt(toLocalInput(recordStart.current)); setTimeSource("recording"); setAccuracy(5);
+        setStage("ready"); setReport(null); setRecording(false);
         media.getTracks().forEach(track => track.stop());
       };
-      next.start(); setElapsed(0); setRecording(true);
+      next.start(); recordStart.current = Date.now(); setElapsed(0); setRecording(true);
     } catch { setError("Microphone access is unavailable. Allow access or upload an audio file."); }
   };
-  const analyze = () => {
-    setStage("running");
-    timer.current = setTimeout(() => setStage("result"), 2200);
+  const analyze = async () => {
+    if (!audio) return;
+    const startMs = new Date(startAt).getTime();
+    if (!startAt || isNaN(startMs)) { setError("Enter when the recording started."); return; }
+    setError(""); setStage("running"); setRunStage({ s: "decode" });
+    try {
+      const r = await analyzeRecording(audio.blob, { startUnix: startMs / 1000, clockSigma: accuracy, onStage: (s, p) => setRunStage({ s, p }) });
+      setReport(r); setStage("result");
+    } catch (e) {
+      setStage("ready");
+      setError(e instanceof AnalysisError ? e.message : "Something went wrong while analysing this recording. Please try again.");
+      if (!(e instanceof AnalysisError)) console.error(e);
+    }
   };
 
+  const reset = () => { setStage("ready"); setReport(null); };
+  const top = report?.result?.candidates[0];
+
   return <section id="workspace" className="workspace scroll-mt-8">
-    <div className="workspace-heading"><span><AudioLines size={18} /> AUDIO WORKSPACE</span><span className="demo-label">FRONTEND PREVIEW</span></div>
+    <div className="workspace-heading"><span><AudioLines size={18} /> AUDIO WORKSPACE</span><span className="demo-label">EXPERIMENTAL · METRO VANCOUVER</span></div>
     <div className="audio-tool">
-      <div className="tool-topline"><h2>{stage === "result" ? "Location estimate" : "Every sound has a starting point."}</h2><span className="local-label"><ShieldCheck size={14} /> Local & private</span></div>
-      {stage === "result" ? <div className="result-layout">
+      <div className="tool-topline"><h2>{stage === "result" || stage === "demo" ? "Location estimate" : "Every sound has a starting point."}</h2><span className="local-label"><ShieldCheck size={14} /> Audio stays on this device</span></div>
+
+      {stage === "demo" ? <div className="result-layout">
         <LocatorMap />
-        <div className="result-details"><span className="demo-label">SIMULATED RESULT</span><h3>{ICICS.name}</h3><p className="coordinates"><MapPin size={14} /> 49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="result-divider" /><p>This is a sample location, not a location inferred from your recording.</p><dl><div><dt>Doppler analysis</dt><dd>Not connected</dd></div><div><dt>Aircraft correlation</dt><dd>Not connected</dd></div><div><dt>Location confidence</dt><dd>Unavailable</dd></div></dl><Button variant="outline" onClick={() => setStage("ready")}><RotateCcw /> New recording</Button></div>
-      </div> : stage === "running" ? <div className="analysis-state" role="status"><Loader2 className="animate-spin" size={30} /><h3>Preparing sample location…</h3><p>Demonstration only · no real location analysis</p><div className="analysis-progress"><span /></div></div> : <>
+        <div className="result-details"><span className="demo-label">SAMPLE RESULT</span><h3>{ICICS.name}</h3><p className="coordinates"><MapPin size={14} /> 49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="result-divider" /><p>This is a sample to show what a result looks like. It wasn't worked out from a recording.</p><Button variant="outline" onClick={reset}><RotateCcw /> Analyse a recording</Button></div>
+      </div>
+
+      : stage === "result" && report ? <div className="report">
+        {report.status === "located" && top ? <div className="result-layout">
+          <ResultMap candidates={report.result!.candidates} heat={report.result!.heat} />
+          <div className="result-details">
+            <span className={`confidence-chip is-${report.result!.confidence}`}>{report.result!.confidence.toUpperCase()} CONFIDENCE</span>
+            <h3>Best match</h3>
+            <p className="coordinates"><MapPin size={14} /> {fmtCoord(top.lat, top.lon)}</p>
+            <p>Most likely within about {Math.round(top.radiusM / 10) * 10} m · {(top.mass * 100).toFixed(0)}% of the likelihood across Metro Vancouver.</p>
+            <div className="result-divider" />
+            <dl>
+              {top.matches.map(m => <div key={m.eventId}><dt>Flyover #{m.eventId}</dt><dd>{m.callsign || m.icao24.toUpperCase()} · {Math.round(m.slant)} m away</dd></div>)}
+              <div><dt>Clock correction</dt><dd>{top.clockOffset >= 0 ? "+" : ""}{Math.round(top.clockOffset)} s</dd></div>
+              <div><dt>Aircraft checked</dt><dd>{report.result!.aircraftConsidered}</dd></div>
+            </dl>
+            {report.result!.candidates.length > 1 && <p className="alt-candidates">Other possibilities: {report.result!.candidates.slice(1, 4).map((c, i) => <span key={i}>#{i + 2} {(c.mass * 100).toFixed(0)}%</span>)}</p>}
+            <Button variant="outline" onClick={reset}><RotateCcw /> New recording</Button>
+          </div>
+        </div> : <div className="no-result">
+          <Plane size={22} />
+          <h3>{report.status === "no-events" ? "No aircraft flyover found in this recording" : "No flight matched these flyovers"}</h3>
+          <p>{report.status === "no-events"
+            ? "We couldn't find the falling engine tone a passing aircraft makes. Try a longer clip that includes a plane passing overhead, recorded without noise cancelling."
+            : `We heard ${report.events.length} flyover${report.events.length > 1 ? "s" : ""}, but none of the ${report.flights} aircraft tracked over Metro Vancouver at that time fits. Check the recording time and accuracy, or the recording may have been made elsewhere.`}</p>
+          <Button variant="outline" onClick={reset}><RotateCcw /> Try again</Button>
+        </div>}
+        <div className="evidence">
+          <h4>What we heard</h4>
+          <SpectrogramView spec={report.spectrogram} events={report.events} />
+          {report.events.length > 0 && <table className="events-table"><thead><tr><th>Flyover</th><th>Closest at</th><th>Speed</th><th>Slant range</th><th>Engine tone</th></tr></thead>
+            <tbody>{report.events.map(e => <tr key={e.id}><td>#{e.id}{!e.coversCpa && <span title="The clip only caught part of this pass, so these numbers are rougher"> *</span>}</td><td>{fmtClock(report.startUnix + e.tCpa)}</td><td>{Math.round(e.speed)} m/s</td><td>{Math.round(e.slant)} m</td><td>{Math.round(e.f0)} Hz</td></tr>)}</tbody></table>}
+        </div>
+      </div>
+
+      : stage === "running" ? <div className="analysis-state" role="status"><Loader2 className="animate-spin" size={30} /><h3>{STAGE_LABELS[runStage.s]}…</h3><p>{runStage.s === "search" && runStage.p !== undefined ? `${Math.round(runStage.p * 100)}%` : "This can take up to a minute"}</p><div className="analysis-progress"><span /></div></div>
+
+      : <>
         <div className="input-options">
           <div className={`upload-zone ${dragging ? "is-dragging" : ""}`} onDragOver={event => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={event => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file && !recording) loadFile(file); }}>
             <input ref={input} type="file" accept="audio/*,.m4a,.flac" className="sr-only" aria-label="Upload audio recording" disabled={recording} onChange={event => { const file = event.target.files?.[0]; if (file) loadFile(file); event.target.value = ""; }} />
-            {audio ? <><FileAudio size={26} /><span className="file-name">{audio.name}</span><audio controls src={audio.url} aria-label="Audio preview" /><Button variant="ghost" size="icon" className="remove-audio" aria-label="Remove audio" onClick={() => setAudio(null)} disabled={recording}><X /></Button></> : <><div className="upload-icon"><Upload size={21} /></div><Button variant="ghost" onClick={() => input.current?.click()} disabled={recording} className="upload-command">Choose an audio file <ArrowRight size={14} /></Button><p>or drop your voice memo here</p><span className="file-types">MP3, WAV, M4A, OGG, FLAC</span></>}
+            {audio ? <><FileAudio size={26} /><span className="file-name">{audio.name}</span><audio controls src={audio.url} aria-label="Audio preview" /><Button variant="ghost" size="icon" className="remove-audio" aria-label="Remove audio" onClick={() => { setAudio(null); setStartAt(""); setTimeSource(""); }} disabled={recording}><X /></Button></> : <><div className="upload-icon"><Upload size={21} /></div><Button variant="ghost" onClick={() => input.current?.click()} disabled={recording} className="upload-command">Choose an audio file <ArrowRight size={14} /></Button><p>or drop your voice memo here</p><span className="file-types">MP3, WAV, M4A, OGG, FLAC</span></>}
           </div>
           <span className="or-label">or</span>
           <div className={`record-zone ${recording ? "is-recording" : ""}`}><div className="record-icon"><Mic size={23} /></div><h3>{recording ? `${Math.floor(elapsed / 60).toString().padStart(2, "0")}:${(elapsed % 60).toString().padStart(2, "0")}` : "Capture the moment"}</h3><p>{recording ? "Recording your surroundings" : "Start with a live audio recording"}</p><Button variant="outline" className="record-button" onClick={recording ? () => recorder.current?.stop() : startRecording}>{recording ? <Square size={13} /> : <Mic size={13} />}{recording ? "Stop recording" : "Record audio"}</Button></div>
         </div>
+        {audio && <div className="time-fields">
+          <label><span><Clock size={12} /> Recording started</span><input type="datetime-local" step={1} value={startAt} onChange={e => { setStartAt(e.target.value); setTimeSource(""); }} /></label>
+          <label><span>How sure are you of that time?</span><select value={accuracy} onChange={e => setAccuracy(Number(e.target.value))}>{ACCURACY.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</select></label>
+          <p>{timeSource === "file" ? "Filled in from the file's details. Please check it, since copying a file can change this time." : timeSource === "recording" ? "Taken from this device's clock when you started recording." : "Times are in your local time zone."}</p>
+        </div>}
         {error && <p role="alert" className="text-destructive mt-4 text-sm">{error}</p>}
-        <div className="tool-bottom"><p><Check size={14} /> Your audio stays on this device.</p><Button onClick={analyze} disabled={!audio || recording}>Preview location <ArrowRight /></Button></div>
+        <div className="tool-bottom"><p><Check size={14} /> Only the recording time is sent out, to look up flights.</p><Button onClick={analyze} disabled={!audio || recording}>Locate recording <ArrowRight /></Button></div>
       </>}
     </div>
-    <p className="preview-disclaimer">Experimental concept. Accurate geolocation requires reference signals and flight data; audio alone cannot reliably pinpoint a caller.</p>
+    <p className="preview-disclaimer">Searches Metro Vancouver using aircraft engine sounds and public flight positions from OpenSky Network. It works best with a minute or more of outdoor audio that includes at least two planes passing.</p>
   </section>;
 }
