@@ -6,6 +6,7 @@ import LocatorMap, { ICICS } from "@/components/LocatorMap";
 import { ArrowDown, ArrowRight, Globe2, Radio, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AudioWorkspace from "@/components/AudioWorkspace";
+import HikerDemo from "@/components/HikerDemo";
 import globe from "@/assets/signal-globe.jpg";
 
 const Index = () => {
@@ -15,6 +16,7 @@ const Index = () => {
   const [phase, setPhase] = useState<"idle" | "zooming" | "map" | "arrived">("idle");
   const startLocate = () => { window.scrollTo({ top: 0, behavior: "smooth" }); setPhase("zooming"); };
   const openWorkspace = () => { document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth" }); };
+  const openHikerDemo = () => { document.getElementById("hiker-demo")?.scrollIntoView({ behavior: "smooth" }); };
   const returnHome = () => { setPhase("idle"); navigate("/", { replace: true }); window.scrollTo({ top: 0 }); };
   useEffect(() => {
     if (location.search === "?demo=1") { setPhase("zooming"); navigate("/", { replace: true }); }
@@ -23,7 +25,7 @@ const Index = () => {
   const openDemo = () => { setDemoRequest(value => value + 1); openWorkspace(); };
   return (
     <div className="locator-site min-h-screen overflow-x-hidden">
-      <SiteHeader onHome={returnHome} onDemo={startLocate} onStart={openWorkspace} />
+      <SiteHeader onHome={returnHome} onDemo={openHikerDemo} onStart={openWorkspace} />
       <main>
         <section className={`globe-hero phase-${phase}`}>
           <div className="globe-background" aria-hidden="true"><img src={globe} width={1024} height={1024} alt="" /><div className="globe-crosshair crosshair-one">+</div><div className="globe-crosshair crosshair-two">+</div></div>
@@ -33,6 +35,7 @@ const Index = () => {
           {phase === "arrived" && <div className="hero-result"><span className="demo-label">SIMULATED RESULT</span><h3>{ICICS.name}</h3><p className="coordinates">49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="hero-result-actions"><Button size="sm" onClick={openDemo}>Open in workspace <ArrowRight /></Button><Button size="sm" variant="ghost" onClick={() => setPhase("idle")}>Reset</Button></div></div>}
           <div className="hero-bottom"><span><Radio size={13} /> THE WORLD IS ALWAYS TRANSMITTING</span><a href="#workspace" aria-label="Go to audio workspace"><ArrowDown size={18} /></a><span>LISTEN CLOSER.</span></div>
         </section>
+        <HikerDemo />
         <AudioWorkspace demoRequest={demoRequest} />
         <TechnologySection />
       </main>

@@ -1,4 +1,6 @@
 # Audio locator
+- [x] Align transmitting label with the account note and slowly spin the globe; verified layout and reduced motion.
+- [x] Add Stawamus Chief fictional hiker demo with uploaded recording, playback controls and honest analysis availability; verified desktop/mobile. No audio-analysis API exists; no detections are generated.
 - [x] Replace camping home with globe-backed audio locator.
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
