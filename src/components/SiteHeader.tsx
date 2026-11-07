@@ -11,7 +11,7 @@ export default function SiteHeader({ onHome, onDemo, onStart }: { onHome?: () =>
   const home = () => { close(); window.scrollTo({ top: 0 }); onHome?.(); };
   const demo = () => { close(); if (onDemo) onDemo(); else navigate("/?demo=1"); };
   const start = () => { close(); if (onStart) onStart(); else navigate("/#workspace"); };
-  const links = <><Link to="/technology" onClick={close}>Technology</Link><Link to="/#workspace" onClick={() => { close(); if (onStart) onStart(); }}>Workspace</Link></>;
+  const links = <><Link to="/#technology" onClick={() => { close(); document.getElementById("technology")?.scrollIntoView({ behavior: "smooth" }); }}>Technology</Link><Link to="/#workspace" onClick={() => { close(); if (onStart) onStart(); }}>Workspace</Link></>;
   return <header className="site-header">
     <Link to="/" className="brand" onClick={home} aria-label="GeoLocator home"><Globe2 size={22} /> GeoLocator<span className="brand-audio">/ audio</span></Link>
     <nav className="desktop-nav">{links}<Button variant="ghost" onClick={demo}>View demo <ArrowRight size={13} /></Button></nav>

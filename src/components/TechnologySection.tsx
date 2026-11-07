@@ -1,8 +1,6 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Crosshair, Globe2, Ruler, Waves } from "lucide-react";
+import { ArrowRight, Crosshair, Ruler, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import SiteHeader from "@/components/SiteHeader";
 import DopplerExplorer from "@/components/DopplerExplorer";
 import ConceptDiagram from "@/components/ConceptDiagram";
 
@@ -27,14 +25,11 @@ const steps = [
   },
 ];
 
-const Technology = () => {
-  useEffect(() => { document.title = "How it works · GeoLocator"; return () => { document.title = "GeoLocator — find where a sound begins"; }; }, []);
-  return <div className="locator-site min-h-screen overflow-x-hidden">
-    <SiteHeader />
-    <main className="tech-page">
+const TechnologySection = () => {
+  return <section id="technology" className="tech-page scroll-mt-8" aria-label="The science of sound">
       <section className="tech-explorer tech-explorer-first">
         <div className="section-caption">THE SCIENCE OF SOUND</div>
-        <h1>Audio geolocation</h1>
+        <h2>Audio geolocation</h2>
         <DopplerExplorer />
       </section>
 
@@ -59,9 +54,7 @@ const Technology = () => {
         </ul>
         <Button asChild className="primary-cta"><Link to="/#workspace">Locate a recording <ArrowRight size={17} /></Link></Button>
       </section>
-    </main>
-    <footer className="locator-footer"><Link to="/" className="brand"><Globe2 size={19} /> GeoLocator<span className="brand-audio">/ audio</span></Link><span>An exploration in acoustic geolocation.</span><span className="footer-status"><span className="status-dot" /> Experimental</span></footer>
-  </div>;
+  </section>;
 };
 
-export default Technology;
+export default TechnologySection;
