@@ -1,30 +1,28 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Crosshair, Globe2, Radio, Ruler, Waves } from "lucide-react";
+import { ArrowRight, Crosshair, Globe2, Ruler, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SiteHeader from "@/components/SiteHeader";
 import DopplerExplorer from "@/components/DopplerExplorer";
+import ConceptDiagram from "@/components/ConceptDiagram";
 
 const steps = [
   {
-    icon: Waves, tag: "01 / THE DOPPLER EFFECT", title: "Why a passing plane changes pitch",
+    icon: Waves, concept: "doppler" as const, tag: "01 / THE DOPPLER EFFECT", title: "Why a passing plane changes pitch",
     body: [
-      "Think of an ambulance siren: it sounds higher as it comes towards you and drops the moment it passes. Planes do the same thing. Their engines hum at a steady note, but while the plane flies towards you the sound waves get squashed together, so you hear a higher note. Once it flies away the waves stretch out, so the note drops.",
-      "Some engine tones are quiet enough to go unnoticed, but a microphone may still capture them. Shown as a picture of sound over time, a passing plane leaves a curve that slides down from a high note to a low one.",
+      "Like an ambulance siren, a plane sounds higher as it approaches and lower as it moves away. Its motion bunches sound waves together in front and spreads them out behind. A microphone captures this pitch change as a falling frequency curve.",
     ],
   },
   {
-    icon: Ruler, tag: "02 / EXTRACTING THE SLANT RANGE", title: "How far away was the plane?",
+    icon: Ruler, concept: "range" as const, tag: "02 / EXTRACTING THE SLANT RANGE", title: "How far away was the plane?",
     body: [
-      "The shape of that curve says two things. How far apart the starting and ending notes are tells us how fast the plane was flying. How suddenly the note drops tells us how close it came: a plane right overhead makes the pitch fall almost all at once, while a distant one makes it slide down slowly.",
-      "The \"slant range\" is the straight-line distance from the microphone to the plane at its closest point, measured through the air rather than along the ground. Matching the curve to the physics of sound gives the speed, the slant range and an estimate of when the plane was closest. Sound takes time to reach the microphone, so that delay must also be accounted for.",
+      "Slant range is the straight-line distance through the air from the microphone to the plane at its closest point. A sharper pitch drop suggests a closer pass; a gentler drop suggests a more distant one. Fitting the curve estimates this distance and the plane’s speed, while accounting for sound’s travel time.",
     ],
   },
   {
-    icon: Crosshair, tag: "03 / PINPOINTING THE LOCATION", title: "Turning one sound into one place",
+    icon: Crosshair, concept: "location" as const, tag: "03 / PINPOINTING THE LOCATION", title: "Where could the recording be from?",
     body: [
-      "Aircraft broadcast their position every few seconds, and OpenSky Network records it. The experimental method compares candidate spots across Metro Vancouver and works out which planes would have passed that spot, how close they would have come, how fast they were flying and when the sound would have arrived.",
-      "One flyover narrows things down to a few places near that plane's route. A second flyover, heard a set time later, has to fit too, and the gap between the two helps account for recording-clock errors. A missing flyover can be another clue, but noise, buildings and microphone settings can hide a plane. Matching several reliable signals can narrow the possible area; it does not guarantee a precise caller location.",
+      "Known flight paths let us compare the timing and distance of each flyover with possible recording spots. Several matching passes can narrow the search to an overlapping area. Noise, missing flight data and clock errors limit accuracy, so audio alone cannot guarantee a precise location.",
     ],
   },
 ];
@@ -34,30 +32,21 @@ const Technology = () => {
   return <div className="locator-site min-h-screen overflow-x-hidden">
     <SiteHeader />
     <main className="tech-page">
-      <section className="tech-intro">
+      <section className="tech-explorer tech-explorer-first">
         <div className="section-caption">THE SCIENCE OF SOUND</div>
-        <h1>The science behind<br /><span>audio geolocation.</span></h1>
-        <p>A plain-language guide to the three ideas behind GeoLocator: the Doppler effect, measuring how far away a plane was, and comparing possible recording locations.</p>
-      </section>
-
-      <section className="technology tech-existing">
-        <div className="technology-title"><h2>Hidden in the noise.<br /><span>A possible point of origin.</span></h2><p>Exploring the relationship between moving sound sources, flight paths, and the places we listen from.</p></div>
-        <div className="signal-features"><article><Waves size={22} /><span>01 / FREQUENCY</span><h3>Doppler shift</h3><p>The change in pitch as an aircraft approaches and moves away offers clues about relative motion.</p></article><article><Radio size={22} /><span>02 / CORRELATION</span><h3>Aircraft signatures</h3><p>Engine harmonics and time-matched flight data could help narrow down potential sound sources.</p></article><article><Globe2 size={22} /><span>03 / LOCATION</span><h3>Signals to coordinates</h3><p>Multiple reference signals and known flight paths are needed to estimate an area with meaningful confidence.</p></article></div>
+        <h1>Audio geolocation</h1>
+        <DopplerExplorer />
       </section>
 
       <section className="tech-steps">
-        {steps.map(({ icon: Icon, tag, title, body }) => <article key={tag} className="tech-step">
+        {steps.map(({ icon: Icon, concept, tag, title, body }) => <article key={tag} className="tech-step">
+          <div className="tech-step-copy">
           <div className="tech-step-head"><Icon size={20} /><span>{tag}</span></div>
           <h2>{title}</h2>
           {body.map((p, i) => <p key={i}>{p}</p>)}
+          </div>
+          <ConceptDiagram concept={concept} />
         </article>)}
-      </section>
-
-      <section className="tech-explorer">
-        <div className="section-caption">TRY IT YOURSELF</div>
-        <h2>Move the plane. Watch the pitch.</h2>
-        <p>The moving plane emits evenly spaced sound waves. Ahead of it, waves bunch together; behind it, they spread out. The curve follows the pitch arriving at the microphone, including the travel time of sound.</p>
-        <DopplerExplorer />
       </section>
 
       <section className="tech-limits">

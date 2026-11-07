@@ -4,3 +4,4 @@
 - Keep audio files local in browser memory and revoke object URLs on replacement or unmount.
 - Share SiteHeader across the home and Technology pages; home callbacks reset the cinematic view while other pages navigate back.
 - Use the retarded-time Doppler model for the teaching visual so sound propagation and the plotted pitch stay synchronized.
+- Render scientific concept pictures as accessible token-themed SVG diagrams so their geometry remains accurate and legible at small sizes.
