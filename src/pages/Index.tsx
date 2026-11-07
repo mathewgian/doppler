@@ -6,7 +6,6 @@ import LocatorMap, { ICICS } from "@/components/LocatorMap";
 import { ArrowDown, ArrowRight, Globe2, Radio, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AudioWorkspace from "@/components/AudioWorkspace";
-import HikerDemo from "@/components/HikerDemo";
 import RotatingGlobe from "@/components/RotatingGlobe";
 import CinematicHikerDemo from "@/components/CinematicHikerDemo";
 
@@ -32,12 +31,11 @@ const Index = () => {
         <section className={`globe-hero phase-${phase}`}>
           <div className="globe-background" aria-hidden="true"><RotatingGlobe active={phase === "idle"} /><div className="globe-crosshair crosshair-one">+</div><div className="globe-crosshair crosshair-two">+</div></div>
           <div className="hero-side-label left-label">SIGNAL → LOCATION</div><div className="hero-side-label right-label">49° 16′ N / 123° 07′ W</div>
-          <div className="hero-content"><div className="hero-eyebrow"><span className="status-dot" /> SOUND. SIGNAL. SOMEWHERE.</div><h1 className="headline-reveal"><span className="headline-text">Find where<br />a sound <span className="headline-muted">begins.</span></span></h1><p>A world of signals. One point of origin.<br />Explore audio geolocation through Doppler shifts<br className="desktop-break" /> and the frequencies of aircraft overhead.</p><div className="hero-actions"><Button className="primary-cta" onClick={startLocate}>Locate a sound <ArrowRight size={17} /></Button><Button variant="ghost" className="demo-cta" onClick={startLocate}>Explore the demo <ArrowRight size={15} /></Button></div><div className="hero-note"><ShieldCheck size={12} /> No account needed <span>·</span> Audio stays on your device</div></div>
+          <div className="hero-content"><div className="hero-eyebrow"><span className="status-dot" /> SOUND. SIGNAL. SOMEWHERE.</div><h1 className="headline-reveal"><span className="headline-text">Find where<br />a sound <span className="headline-muted">begins.</span></span></h1><p>A world of signals. One point of origin.<br />Explore audio geolocation through Doppler shifts<br className="desktop-break" /> and the frequencies of aircraft overhead.</p><div className="hero-actions"><Button className="primary-cta" onClick={startLocate}>Locate a sound <ArrowRight size={17} /></Button><Button variant="ghost" className="demo-cta" onClick={openHikerDemo}>Explore the demo <ArrowRight size={15} /></Button></div><div className="hero-note"><ShieldCheck size={12} /> No account needed <span>·</span> Audio stays on your device</div></div>
           {phase !== "idle" && <div className="hero-map"><LocatorMap cinematic className="hero-map-canvas" onArrive={() => setPhase("arrived")} /><div className="hero-map-vignette" aria-hidden="true" /></div>}
           {phase === "arrived" && <div className="hero-result"><span className="demo-label">SIMULATED RESULT</span><h3>{ICICS.name}</h3><p className="coordinates">49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="hero-result-actions"><Button size="sm" onClick={openDemo}>Open in workspace <ArrowRight /></Button><Button size="sm" variant="ghost" onClick={() => setPhase("idle")}>Reset</Button></div></div>}
           <div className="hero-bottom"><span><Radio size={13} /> THE WORLD IS ALWAYS TRANSMITTING</span><a href="#workspace" aria-label="Go to audio workspace"><ArrowDown size={18} /></a><span>LISTEN CLOSER.</span></div>
         </section>
-        <HikerDemo onTryDemo={openHikerDemo} />
         <AudioWorkspace demoRequest={demoRequest} />
         <TechnologySection />
       </main>
