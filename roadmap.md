@@ -1,4 +1,5 @@
 # Audio locator
+- [x] Fixed reduced-motion instant skipping: timed steps retain full zoom/search durations; explicit Animations toggle enables continuous motion. Verified natural audio end, textured 3D zoom, moving aircraft, frequency 180.8→166.4 Hz, radius 1989→923 m and reveal with no runtime errors at 1002×727.
 - [x] Explore the demo opens cinematic hiker audio/zoom/search; inline hiker section removed. Verified actual hosted recording with local delivery interception, natural audio end, aircraft movement, radius 1775→397→25 m, exact reveal, restart/skip, mobile and no runtime errors.
 - [x] Implement fullscreen audio → black fade → Earth zoom → simulated flight/search → configured hiker reveal; tested natural audio end, skip/restart/close, no live calls and mobile. Local asset delivery mocked from the actual hosted recordings for browser checks.
 - [x] Replace flat image spin with a globe rotating around its polar axis; verified desktop/mobile, reduced motion and existing map transition/reset.

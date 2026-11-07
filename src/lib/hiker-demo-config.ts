@@ -13,6 +13,12 @@ export const HIKER_DEMO = {
   dopplerHz: [185, 174, 160, 145, 134],
 };
 
+/** Reduced motion uses timed discrete updates, never skips a story phase. */
+export function demoProgress(elapsedMs: number, durationMs: number, animate: boolean) {
+  const p = Math.max(0, Math.min(1, elapsedMs / durationMs));
+  return animate || p === 1 ? p : Math.floor(p * 4) / 4;
+}
+
 export function demoSample(progress: number) {
   const flight = HIKER_DEMO.flight;
   const timestamps = flight.map(p => Date.parse(p.timestamp));
