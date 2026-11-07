@@ -119,7 +119,7 @@ All colors MUST be HSL.
 }
 
 /* Audio locator: quiet monochrome surfaces, fine rules, and signal-green states. */
-.locator-site { font-family: 'DM Sans', sans-serif; letter-spacing: 0; background-image: var(--hero-light); }
+.locator-site { font-family: 'DM Sans', sans-serif; letter-spacing: 0; background: hsl(var(--background)); display: flow-root; width: 100%; }
 .site-header { position: relative; z-index: 10; max-width: 1120px; margin: 22px auto 0; height: 66px; display: flex; align-items: center; gap: 28px; padding: 0 24px; border: 1px solid hsl(var(--border)); border-radius: 99px; background: hsl(var(--card) / .93); }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; white-space: nowrap; }
 .brand-audio { color: hsl(var(--muted-foreground)); font-size: 13px; font-weight: 400; margin-left: 4px; }
@@ -129,7 +129,7 @@ All colors MUST be HSL.
 .nav-cta { border-radius: 99px; height: 36px; font-size: 12px; padding: 0 18px; }
 .mobile-menu { display: none; }
 .globe-hero { position: relative; min-height: 668px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.globe-background { position: absolute; width: 670px; height: 670px; top: 7px; left: 50%; transform: translateX(-50%); opacity: .5; pointer-events: none; mix-blend-mode: screen; }
+.globe-background { position: absolute; width: 670px; height: 670px; top: 7px; left: 50%; transform: translateX(-50%); opacity: .5; pointer-events: none; }
 .globe-background img { width: 100%; height: 100%; object-fit: contain; box-shadow: var(--globe-shadow); }
 .globe-background::after { content: ''; position: absolute; inset: 0; background: var(--globe-fade); }
 .globe-crosshair { position: absolute; font: 25px monospace; color: hsl(var(--foreground)); z-index: 1; }
@@ -207,8 +207,8 @@ All colors MUST be HSL.
 .cinematic-demo-dialog>button:last-child { z-index: 1000; }
 .cinematic-demo { position: relative; width: 100%; height: 100%; background: hsl(var(--background)); font-family: 'DM Sans', sans-serif; }
 .demo-topbar { position: absolute; top: 0; left: 0; right: 0; padding: 22px 64px 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 15px; z-index: 800; background: hsl(var(--background) / .8); }
-.demo-topbar>div { display: flex; gap: 8px; }.demo-topbar button { font-size: 12px; }
-.demo-audio-scene { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transition: opacity 1s ease; }
+.demo-topbar>div { display: flex; flex-wrap: wrap; gap: 8px; }.demo-topbar button { font-size: 12px; }
+.demo-audio-scene { position: absolute; inset: 0; z-index: 700; background: hsl(var(--background)); display: flex; align-items: center; justify-content: center; transition: opacity 1s ease; }
 .demo-phase-fade .demo-audio-scene { opacity: 0; }
 .fullscreen-audio { width: 100%; max-width: 760px; margin: 0; }
 .fullscreen-audio .hiker-player { padding: 30px 0; border: 0; border-radius: 0; background: transparent; }
@@ -217,6 +217,7 @@ All colors MUST be HSL.
 .demo-earth-scene { z-index: 500; pointer-events: none; }
 .demo-earth-scene .globe-fallback { width: 100%; height: 100%; object-fit: contain; }
 .demo-earth-blend,.demo-map-hidden { opacity: 0; }
+.demo-phase-audio .demo-map-scene,.demo-phase-fade .demo-map-scene { opacity: 0; pointer-events: none; }
 .demo-destination { position: absolute; bottom: 48px; left: 32px; }
 .demo-destination span { font: 10px monospace; color: hsl(var(--muted-foreground)); }.demo-destination h2 { font-size: 32px; margin: 12px 0 6px; }.demo-destination p { color: hsl(var(--muted-foreground)); font-size: 13px; }
 .sim-search { position: absolute; inset: 0; }.demo-search-map { position: absolute; inset: 0; color: hsl(var(--foreground)); background: hsl(var(--background)); }

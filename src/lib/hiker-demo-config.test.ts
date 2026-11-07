@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { demoRadius, demoSample, HIKER_DEMO } from "./hiker-demo-config";
+import { demoProgress, demoRadius, demoSample, HIKER_DEMO } from "./hiker-demo-config";
 
 describe("configured fictional hiker demo", () => {
+  it("never instantly skips the requested zoom or simulated search", () => {
+    expect(demoProgress(16, 4500)).toBeLessThan(.01);
+    expect(demoProgress(2250, 4500)).toBe(.5);
+    expect(demoProgress(4500, 9000)).toBe(.5);
+    expect(demoProgress(9000, 9000)).toBe(1);
+  });
   it("ends at the supplied Stawamus Chief coordinates", () => {
     expect(HIKER_DEMO.location.lat).toBe(49.686508362919426);
     expect(HIKER_DEMO.location.lng).toBe(-123.13552565162448);

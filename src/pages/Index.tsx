@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import SiteHeader from "@/components/SiteHeader";
 import TechnologySection from "@/components/TechnologySection";
@@ -12,6 +12,12 @@ import CinematicHikerDemo from "@/components/CinematicHikerDemo";
 const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const initialLocation = useRef(true);
+  useLayoutEffect(() => {
+    window.history.scrollRestoration = "manual";
+    if (window.location.hash) window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
   const [demoRequest, setDemoRequest] = useState(0);
   const [hikerDemoOpen, setHikerDemoOpen] = useState(false);
   const [phase, setPhase] = useState<"idle" | "zooming" | "map" | "arrived">("idle");
@@ -21,6 +27,7 @@ const Index = () => {
   const returnHome = () => { setPhase("idle"); navigate("/", { replace: true }); window.scrollTo({ top: 0 }); };
   useEffect(() => {
     if (location.search === "?demo=1") { setHikerDemoOpen(true); navigate("/", { replace: true }); }
+    if (initialLocation.current) { initialLocation.current = false; return; }
     if (location.hash === "#workspace" || location.hash === "#technology") document.getElementById(location.hash.slice(1))?.scrollIntoView();
   }, [location.search, location.hash, navigate]);
   const openDemo = () => { setDemoRequest(value => value + 1); openWorkspace(); };

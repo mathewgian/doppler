@@ -1,4 +1,5 @@
 # Audio locator
+- [x] Stopped startup hash scrolling; Technology click still scrolls. Matched globe and screen backgrounds by removing screen blending. Restored full user-triggered animation timeline and preloaded scenes; verified natural audio end, textured Earth zoom, moving aircraft, frequency/radius changes and reveal with reduced motion enabled.
 - [x] Explore the demo opens cinematic hiker audio/zoom/search; inline hiker section removed. Verified actual hosted recording with local delivery interception, natural audio end, aircraft movement, radius 1775→397→25 m, exact reveal, restart/skip, mobile and no runtime errors.
 - [x] Implement fullscreen audio → black fade → Earth zoom → simulated flight/search → configured hiker reveal; tested natural audio end, skip/restart/close, no live calls and mobile. Local asset delivery mocked from the actual hosted recordings for browser checks.
 - [x] Replace flat image spin with a globe rotating around its polar axis; verified desktop/mobile, reduced motion and existing map transition/reset.

@@ -13,6 +13,10 @@ export const HIKER_DEMO = {
   dopplerHz: [185, 174, 160, 145, 134],
 };
 
+export function demoProgress(elapsedMs: number, durationMs: number) {
+  return Math.max(0, Math.min(1, elapsedMs / durationMs));
+}
+
 export function demoSample(progress: number) {
   const flight = HIKER_DEMO.flight;
   const timestamps = flight.map(p => Date.parse(p.timestamp));
