@@ -28,8 +28,7 @@ const steps = [
 const TechnologySection = () => {
   return <section id="technology" className="tech-page scroll-mt-8" aria-label="The science of sound">
       <section className="tech-explorer tech-explorer-first">
-        <div className="section-caption">THE SCIENCE OF SOUND</div>
-        <h2>Audio geolocation</h2>
+        <h2>The Science of Sound</h2>
         <DopplerExplorer />
       </section>
 
