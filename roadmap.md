@@ -8,3 +8,5 @@
 - [x] Finish and verify Technology page: existing content, plain-language explanations and interactive flight-path/frequency visual on desktop and mobile.
 - [x] Move Technology visual first and pair three-sentence concept summaries with matching diagrams; verified desktop/tablet/mobile and interactive controls.
 - [x] Embed Technology content below the home workspace; verified Technology scrolling, legacy links, visual controls and desktop/mobile navigation.
+- [x] Tighten gaps between science sections; verified desktop/tablet/mobile.
+- [x] Rename GeoLocator to Doppler in the site and project; verified names and home navigation.
