@@ -1,4 +1,5 @@
 # Audio locator
+- [ ] Make Explore the demo exclusively open the cinematic hiker recording/zoom/search; remove the inline hiker section and verify clearly visible moving aircraft, Doppler curve and narrowing region.
 - [x] Implement fullscreen audio → black fade → Earth zoom → simulated flight/search → configured hiker reveal; tested natural audio end, skip/restart/close, no live calls and mobile. Local asset delivery mocked from the actual hosted recordings for browser checks.
 - [x] Replace flat image spin with a globe rotating around its polar axis; verified desktop/mobile, reduced motion and existing map transition/reset.
 - [x] Align transmitting label with the account note and slowly spin the globe; verified layout and reduced motion.
@@ -7,7 +8,7 @@
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
 # Location logic & pages
-- [ ] Import ADS-B Exchange Metro Vancouver data for the past month; blocked by licensed historical archive access and data delivery. No database changes or imports until access is supplied.
+- [ ] Finish ADSB.lol Metro Vancouver past-month extraction and database loading; blocked by ~113 GB of global archive transfer requiring a sustained batch worker. Five-second-spaced manifest verified for Oct 8–Nov 6; streaming importer and protected table ready, zero positions loaded.
 - [ ] Verify OpenSky OAuth flight lookup: credentials saved and function deployed, but the live sign-in request timed out. Blocked by OpenSky connectivity; keep audio analysis separate.
 - [ ] Real location logic: synthetic tests exist; live results blocked by unavailable, unverified OpenSky flight access. Keep public location results simulated.
 - [x] Verify GeoLocator title/brand returns to the opening screen, including after the demo.

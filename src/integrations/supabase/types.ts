@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      aircraft_archive_positions: {
+        Row: {
+          altitude_m: number | null
+          archive_url: string
+          callsign: string | null
+          ground_speed_mps: number | null
+          icao24: string
+          latitude: number
+          longitude: number
+          observed_at: string
+          position_source: string | null
+          source: string
+          track_deg: number | null
+        }
+        Insert: {
+          altitude_m?: number | null
+          archive_url: string
+          callsign?: string | null
+          ground_speed_mps?: number | null
+          icao24: string
+          latitude: number
+          longitude: number
+          observed_at: string
+          position_source?: string | null
+          source?: string
+          track_deg?: number | null
+        }
+        Update: {
+          altitude_m?: number | null
+          archive_url?: string
+          callsign?: string | null
+          ground_speed_mps?: number | null
+          icao24?: string
+          latitude?: number
+          longitude?: number
+          observed_at?: string
+          position_source?: string | null
+          source?: string
+          track_deg?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

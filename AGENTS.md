@@ -1,4 +1,5 @@
 # Project rules
+- Process multi-gigabyte ADSB.lol historical archives with the offline streaming importer and service-only aircraft_archive_positions table, not browser or edge polling, to keep archive extraction bounded and separate from simulated audio results.
 - Render the hero Earth with Three.js in RotatingGlobe using a public-domain Natural Earth dotted land texture; rotate the sphere around its tilted polar axis rather than transforming a flat picture, with static fallback and reduced-motion support.
 - Authenticate OpenSky only server-side using saved OAuth client credentials; never expose provider response bodies or tokens in errors because they may contain sensitive data.
 - Keep the audio locator frontend self-contained and its results explicitly simulated until a real analysis service exists; audio alone does not establish a reliable caller location.
