@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Pause, Play, RotateCcw } from "lucide-react";
 import { dopplerFreq } from "@/lib/acoustics/doppler";
 import { SPEED_OF_SOUND as C } from "@/lib/acoustics/geo";
 
@@ -8,7 +9,7 @@ const F0 = 500, T_SPAN = 8, PERIOD = 0.35;
 
 const cssColor = (name: string, alpha = 1) => {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v ? `hsl(${v} / ${alpha})` : `rgba(255,255,255,${alpha})`;
+  return `hsl(${v || "0 0% 96%"} / ${alpha})`;
 };
 
 /** What the microphone hears at plane-clock time t (the sound lags the plane by r/c). */
@@ -17,7 +18,7 @@ const heard = (t: number, v: number, d: number) => dopplerFreq(t - d / C, F0, v,
 export default function DopplerExplorer() {
   const [lateral, setLateral] = useState(500);
   const [speed, setSpeed] = useState(145);
-  const [playing, setPlaying] = useState(true);
+  const [playing, setPlaying] = useState(() => !window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [t, setT] = useState(-T_SPAN);
   const path = useRef<HTMLCanvasElement>(null);
   const curve = useRef<HTMLCanvasElement>(null);
@@ -37,7 +38,7 @@ export default function DopplerExplorer() {
   const planeX = speed * t;
   const distance = Math.hypot(planeX, lateral);
   const freq = heard(t, speed, lateral);
-  const maxRate = -(F0 * speed * speed) / (C * lateral);
+  const cpaRate = -(F0 * speed * speed) / (C * lateral);
   const fHigh = F0 / (1 - speed / C), fLow = F0 / (1 + speed / C);
 
   // top-down flight path with expanding sound rings
@@ -83,17 +84,18 @@ export default function DopplerExplorer() {
     c.width = W; c.height = H;
     const ctx = c.getContext("2d"); if (!ctx) return;
     const L = 110, R = 30, T = 30, B = 60;
-    const fTop = 800, fBot = 250;
+    const fTop = Math.ceil((F0 / (1 - speed / C) + 40) / 100) * 100;
+    const fBot = Math.max(0, Math.floor((F0 / (1 + speed / C) - 40) / 100) * 100);
     const X = (s: number) => L + ((s + T_SPAN) / (2 * T_SPAN)) * (W - L - R);
     const Y = (f: number) => T + ((fTop - f) / (fTop - fBot)) * (H - T - B);
     ctx.clearRect(0, 0, W, H);
     ctx.strokeStyle = cssColor("--border"); ctx.lineWidth = 2; ctx.strokeRect(L, T, W - L - R, H - T - B);
     ctx.fillStyle = cssColor("--muted-foreground"); ctx.font = "22px monospace";
-    for (const f of [300, 500, 700]) {
+    for (const f of [fBot + 100, Math.round((fTop + fBot) / 200) * 100, fTop - 100]) {
       ctx.fillText(`${f}Hz`, 8, Y(f) + 7);
       ctx.setLineDash([6, 8]); ctx.beginPath(); ctx.moveTo(L, Y(f)); ctx.lineTo(W - R, Y(f)); ctx.stroke(); ctx.setLineDash([]);
     }
-    ctx.fillText(`-${T_SPAN}s`, L - 20, H - 18); ctx.fillText("0s (overhead)", X(0) - 70, H - 18); ctx.fillText(`+${T_SPAN}s`, W - R - 50, H - 18);
+    ctx.fillText(`-${T_SPAN}s`, L - 20, H - 18); ctx.fillText("0s (closest pass)", X(0) - 90, H - 18); ctx.fillText(`+${T_SPAN}s`, W - R - 50, H - 18);
     ctx.strokeStyle = cssColor("--foreground"); ctx.lineWidth = 4;
     ctx.beginPath();
     for (let k = 0; k <= 300; k++) { const s = -T_SPAN + (2 * T_SPAN * k) / 300; const y = Y(heard(s, speed, lateral)); k ? ctx.lineTo(X(s), y) : ctx.moveTo(X(s), y); }
@@ -106,9 +108,9 @@ export default function DopplerExplorer() {
   return <div className="doppler-explorer">
     <div className="explorer-top">
       <div><h3>Airplane Doppler Shift &amp; Slant Range</h3>
-        <dl className="explorer-stats"><div><dt>Observed frequency</dt><dd>{Math.round(freq)} Hz</dd></div><div><dt>Distance to mic</dt><dd>{Math.round(distance)} m</dd></div><div><dt>Max shift rate</dt><dd>{maxRate.toFixed(1)} Hz/s</dd></div></dl>
+        <dl className="explorer-stats"><div><dt>Observed frequency</dt><dd>{Math.round(freq)} Hz</dd></div><div><dt>Distance to mic</dt><dd>{Math.round(distance)} m</dd></div><div><dt>Shift rate at closest pass</dt><dd>{cpaRate.toFixed(1)} Hz/s</dd></div></dl>
       </div>
-      <div className="explorer-buttons"><Button variant="outline" onClick={() => setPlaying(p => !p)}>{playing ? "Pause" : "Play"}</Button><Button variant="outline" onClick={() => { setT(-T_SPAN); setPlaying(true); }}>Reset</Button></div>
+      <div className="explorer-buttons"><Button size="icon" variant="outline" aria-label={playing ? "Pause animation" : "Play animation"} title={playing ? "Pause animation" : "Play animation"} onClick={() => setPlaying(p => !p)}>{playing ? <Pause size={16} /> : <Play size={16} />}</Button><Button size="icon" variant="outline" aria-label="Reset animation" title="Reset animation" onClick={() => { setT(-T_SPAN); }}><RotateCcw size={16} /></Button></div>
     </div>
     <div className="explorer-panel"><span className="panel-label">Top-down flight path</span><canvas ref={path} className="explorer-path" role="img" aria-label={`A plane at ${speed} metres per second passing ${lateral} metres from the microphone`} /></div>
     <div className="explorer-panel"><span className="panel-label">Observed frequency curve f(t)</span><canvas ref={curve} className="explorer-curve" role="img" aria-label="The pitch the microphone hears over time, falling as the plane passes" /></div>
@@ -118,7 +120,7 @@ export default function DopplerExplorer() {
     </div>
     <div className="explorer-readout">
       <p><strong>Read the speed from the two flat ends.</strong> The pitch starts near {Math.round(fHigh)} Hz and settles near {Math.round(fLow)} Hz. How far apart they are gives the speed: v = c × (f<sub>high</sub> − f<sub>low</sub>) ÷ (f<sub>high</sub> + f<sub>low</sub>) ≈ {Math.round((C * (fHigh - fLow)) / (fHigh + fLow))} m/s.</p>
-      <p><strong>Read the distance from the steepest drop.</strong> A close plane makes the pitch fall suddenly; a distant one makes it slide gently. Slant range = f₀ × v² ÷ (c × |steepest slope|) ≈ {Math.round((F0 * speed * speed) / (C * Math.abs(maxRate)))} m.</p>
+      <p><strong>Read the distance from the pitch drop.</strong> A close plane makes the pitch fall suddenly; a distant one makes it slide gently. At the arrival of sound emitted at closest approach, slant range = f₀ × v² ÷ (c × |slope|) ≈ {Math.round((F0 * speed * speed) / (C * Math.abs(cpaRate)))} m. This idealized cross-section includes height in the closest distance; a real flight also requires altitude and track data.</p>
     </div>
   </div>;
 }

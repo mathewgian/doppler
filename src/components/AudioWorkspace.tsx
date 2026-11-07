@@ -2,9 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowRight, AudioLines, Check, Clock, FileAudio, Loader2, MapPin, Mic, Plane, RotateCcw, ShieldCheck, Square, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LocatorMap, { ICICS } from "./LocatorMap";
-import ResultMap from "./ResultMap";
-import SpectrogramView from "./SpectrogramView";
-import { AnalysisError, STAGE_LABELS, analyzeRecording, type AnalysisReport, type Stage } from "@/lib/acoustics/pipeline";
+import { STAGE_LABELS, type AnalysisReport, type Stage } from "@/lib/acoustics/pipeline";
 
 const ACCURACY = [
   { value: 5, label: "Exact (±5 s)" },
@@ -98,17 +96,8 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
   };
   const analyze = async () => {
     if (!audio) return;
-    const startMs = new Date(startAt).getTime();
-    if (!startAt || isNaN(startMs)) { setError("Enter when the recording started."); return; }
-    setError(""); setStage("running"); setRunStage({ s: "decode" });
-    try {
-      const r = await analyzeRecording(audio.blob, { startUnix: startMs / 1000, clockSigma: accuracy, onStage: (s, p) => setRunStage({ s, p }) });
-      setReport(r); setStage("result");
-    } catch (e) {
-      setStage("ready");
-      setError(e instanceof AnalysisError ? e.message : "Something went wrong while analysing this recording. Please try again.");
-      if (!(e instanceof AnalysisError)) console.error(e);
-    }
+    setError("");
+    setStage("demo");
   };
 
   const reset = () => { setStage("ready"); setReport(null); };
@@ -121,40 +110,7 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
 
       {stage === "demo" ? <div className="result-layout">
         <LocatorMap />
-        <div className="result-details"><span className="demo-label">SAMPLE RESULT</span><h3>{ICICS.name}</h3><p className="coordinates"><MapPin size={14} /> 49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="result-divider" /><p>This is a sample to show what a result looks like. It wasn't worked out from a recording.</p><Button variant="outline" onClick={reset}><RotateCcw /> Analyse a recording</Button></div>
-      </div>
-
-      : stage === "result" && report ? <div className="report">
-        {report.status === "located" && top ? <div className="result-layout">
-          <ResultMap candidates={report.result!.candidates} heat={report.result!.heat} />
-          <div className="result-details">
-            <span className={`confidence-chip is-${report.result!.confidence}`}>{report.result!.confidence.toUpperCase()} CONFIDENCE</span>
-            <h3>Best match</h3>
-            <p className="coordinates"><MapPin size={14} /> {fmtCoord(top.lat, top.lon)}</p>
-            <p>Most likely within about {Math.round(top.radiusM / 10) * 10} m · {(top.mass * 100).toFixed(0)}% of the likelihood across Metro Vancouver.</p>
-            <div className="result-divider" />
-            <dl>
-              {top.matches.map(m => <div key={m.eventId}><dt>Flyover #{m.eventId}</dt><dd>{m.callsign || m.icao24.toUpperCase()} · {Math.round(m.slant)} m away</dd></div>)}
-              <div><dt>Clock correction</dt><dd>{top.clockOffset >= 0 ? "+" : ""}{Math.round(top.clockOffset)} s</dd></div>
-              <div><dt>Aircraft checked</dt><dd>{report.result!.aircraftConsidered}</dd></div>
-            </dl>
-            {report.result!.candidates.length > 1 && <p className="alt-candidates">Other possibilities: {report.result!.candidates.slice(1, 4).map((c, i) => <span key={i}>#{i + 2} {(c.mass * 100).toFixed(0)}%</span>)}</p>}
-            <Button variant="outline" onClick={reset}><RotateCcw /> New recording</Button>
-          </div>
-        </div> : <div className="no-result">
-          <Plane size={22} />
-          <h3>{report.status === "no-events" ? "No aircraft flyover found in this recording" : "No flight matched these flyovers"}</h3>
-          <p>{report.status === "no-events"
-            ? "We couldn't find the falling engine tone a passing aircraft makes. Try a longer clip that includes a plane passing overhead, recorded without noise cancelling."
-            : `We heard ${report.events.length} flyover${report.events.length > 1 ? "s" : ""}, but none of the ${report.flights} aircraft tracked over Metro Vancouver at that time fits. Check the recording time and accuracy, or the recording may have been made elsewhere.`}</p>
-          <Button variant="outline" onClick={reset}><RotateCcw /> Try again</Button>
-        </div>}
-        <div className="evidence">
-          <h4>What we heard</h4>
-          <SpectrogramView spec={report.spectrogram} events={report.events} />
-          {report.events.length > 0 && <table className="events-table"><thead><tr><th>Flyover</th><th>Closest at</th><th>Speed</th><th>Slant range</th><th>Engine tone</th></tr></thead>
-            <tbody>{report.events.map(e => <tr key={e.id}><td>#{e.id}{!e.coversCpa && <span title="The clip only caught part of this pass, so these numbers are rougher"> *</span>}</td><td>{fmtClock(report.startUnix + e.tCpa)}</td><td>{Math.round(e.speed)} m/s</td><td>{Math.round(e.slant)} m</td><td>{Math.round(e.f0)} Hz</td></tr>)}</tbody></table>}
-        </div>
+        <div className="result-details"><span className="demo-label">SIMULATED RESULT</span><h3>{ICICS.name}</h3><p className="coordinates"><MapPin size={14} /> 49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="result-divider" /><p>This is a sample to show what a result looks like. It wasn't worked out from a recording.</p><Button variant="outline" onClick={reset}><RotateCcw /> New recording</Button></div>
       </div>
 
       : stage === "running" ? <div className="analysis-state" role="status"><Loader2 className="animate-spin" size={30} /><h3>{STAGE_LABELS[runStage.s]}…</h3><p>{runStage.s === "search" && runStage.p !== undefined ? `${Math.round(runStage.p * 100)}%` : "This can take up to a minute"}</p><div className="analysis-progress"><span /></div></div>
@@ -174,9 +130,9 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
           <p>{timeSource === "file" ? "Filled in from the file's details. Please check it, since copying a file can change this time." : timeSource === "recording" ? "Taken from this device's clock when you started recording." : "Times are in your local time zone."}</p>
         </div>}
         {error && <p role="alert" className="text-destructive mt-4 text-sm">{error}</p>}
-        <div className="tool-bottom"><p><Check size={14} /> Only the recording time is sent out, to look up flights.</p><Button onClick={analyze} disabled={!audio || recording}>Locate recording <ArrowRight /></Button></div>
+        <div className="tool-bottom"><p><Check size={14} /> Your recording stays on this device.</p><Button onClick={analyze} disabled={!audio || recording}>Preview location <ArrowRight /></Button></div>
       </>}
     </div>
-    <p className="preview-disclaimer">Searches Metro Vancouver using aircraft engine sounds and public flight positions from OpenSky Network. It works best with a minute or more of outdoor audio that includes at least two planes passing.</p>
+    <p className="preview-disclaimer">Location results are simulated. Live aircraft matching is not connected; audio alone cannot reliably pinpoint a caller.</p>
   </section>;
 }

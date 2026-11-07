@@ -1,26 +1,28 @@
 import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import SiteHeader from "@/components/SiteHeader";
 import LocatorMap, { ICICS } from "@/components/LocatorMap";
-import { ArrowDown, ArrowRight, AudioLines, Globe2, Menu, Radio, ShieldCheck, Waves, X } from "lucide-react";
+import { ArrowDown, ArrowRight, Globe2, Radio, ShieldCheck, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AudioWorkspace from "@/components/AudioWorkspace";
 import globe from "@/assets/signal-globe.jpg";
 
 const Index = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
   const [demoRequest, setDemoRequest] = useState(0);
   const [phase, setPhase] = useState<"idle" | "zooming" | "map" | "arrived">("idle");
-  const startLocate = () => { setMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); setPhase("zooming"); };
-  const openWorkspace = () => { document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth" }); setMenuOpen(false); };
+  const startLocate = () => { window.scrollTo({ top: 0, behavior: "smooth" }); setPhase("zooming"); };
+  const openWorkspace = () => { document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth" }); };
+  const returnHome = () => { setPhase("idle"); navigate("/", { replace: true }); window.scrollTo({ top: 0 }); };
+  useEffect(() => {
+    if (location.search === "?demo=1") { setPhase("zooming"); navigate("/", { replace: true }); }
+    if (location.hash === "#workspace") document.getElementById("workspace")?.scrollIntoView();
+  }, [location.search, location.hash, navigate]);
   const openDemo = () => { setDemoRequest(value => value + 1); openWorkspace(); };
   return (
     <div className="locator-site min-h-screen overflow-x-hidden">
-      <header className="site-header">
-        <a href="#" className="brand"><Globe2 size={22} /> GeoLocator<span className="brand-audio">/ audio</span></a>
-        <nav className="desktop-nav"><a href="#technology">Technology</a><a href="#workspace">Workspace</a><Button variant="ghost" onClick={startLocate}>View demo <ArrowRight size={13} /></Button></nav>
-        <Button onClick={openWorkspace} className="nav-cta">Get started <ArrowRight /></Button>
-        <Button size="icon" variant="ghost" className="mobile-menu" aria-label={menuOpen ? "Close menu" : "Open menu"} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</Button>
-        {menuOpen && <nav className="mobile-nav"><a href="#technology" onClick={() => setMenuOpen(false)}>Technology</a><a href="#workspace" onClick={() => setMenuOpen(false)}>Workspace</a><Button variant="ghost" onClick={startLocate}>View demo <ArrowRight /></Button></nav>}
-      </header>
+      <SiteHeader onHome={returnHome} onDemo={startLocate} onStart={openWorkspace} />
       <main>
         <section className={`globe-hero phase-${phase}`}>
           <div className="globe-background" aria-hidden="true"><img src={globe} width={1024} height={1024} alt="" /><div className="globe-crosshair crosshair-one">+</div><div className="globe-crosshair crosshair-two">+</div></div>
@@ -33,7 +35,7 @@ const Index = () => {
         <AudioWorkspace demoRequest={demoRequest} />
         <section id="technology" className="technology scroll-mt-8"><div className="section-caption">THE SCIENCE OF SOUND</div><div className="technology-title"><h2>Hidden in the noise.<br /><span>A possible point of origin.</span></h2><p>Exploring the relationship between moving sound sources, flight paths, and the places we listen from.</p></div><div className="signal-features"><article><Waves size={22} /><span>01 / FREQUENCY</span><h3>Doppler shift</h3><p>The change in pitch as an aircraft approaches and moves away offers clues about relative motion.</p></article><article><Radio size={22} /><span>02 / CORRELATION</span><h3>Aircraft signatures</h3><p>Engine harmonics and time-matched flight data could help narrow down potential sound sources.</p></article><article><Globe2 size={22} /><span>03 / LOCATION</span><h3>Signals to coordinates</h3><p>Multiple reference signals and known flight paths are needed to estimate an area with meaningful confidence.</p></article></div></section>
       </main>
-      <footer className="locator-footer"><a href="#" className="brand"><Globe2 size={19} /> GeoLocator<span className="brand-audio">/ audio</span></a><span>An exploration in acoustic geolocation.</span><span className="footer-status"><span className="status-dot" /> Experimental preview</span></footer>
+      <footer className="locator-footer"><Link to="/" onClick={returnHome} className="brand"><Globe2 size={19} /> GeoLocator<span className="brand-audio">/ audio</span></Link><span>An exploration in acoustic geolocation.</span><span className="footer-status"><span className="status-dot" /> Experimental preview</span></footer>
     </div>
   );
 };
