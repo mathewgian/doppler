@@ -177,3 +177,21 @@ All colors MUST be HSL.
     @apply uppercase tracking-wider text-xs font-normal;
   }
 }
+
+.globe-background img, .globe-background { transition: transform 2.4s cubic-bezier(.65,0,.35,1), opacity 2.4s ease; }
+.hero-content, .hero-side-label, .hero-bottom { transition: opacity .7s ease, transform .9s cubic-bezier(.65,0,.35,1), filter .7s ease; }
+.globe-hero:not(.phase-idle) .hero-content { opacity: 0; transform: translateY(-14px) scale(.98); filter: blur(6px); pointer-events: none; }
+.globe-hero:not(.phase-idle) .hero-side-label, .globe-hero:not(.phase-idle) .hero-bottom { opacity: 0; pointer-events: none; }
+.globe-hero:not(.phase-idle) .globe-background { opacity: .85; transform: translateX(-50%) scale(1.9) translateY(4%); transition-delay: .4s; }
+.globe-hero:not(.phase-idle) .globe-background img { transform: rotate(-28deg); transition-delay: .3s; }
+.globe-hero.phase-map .globe-background, .globe-hero.phase-arrived .globe-background { opacity: 0; transform: translateX(-50%) scale(3.2); transition-duration: 1.2s; transition-delay: 0s; }
+.hero-map { position: absolute; inset: 0; z-index: 3; animation: map-in 1.2s ease both; }
+.hero-map-canvas { position: absolute; inset: 0; background: hsl(var(--background)); }
+.hero-map-canvas .leaflet-tile-pane { filter: grayscale(1) invert(1) contrast(.9) brightness(.85); }
+.hero-map-vignette { position: absolute; inset: 0; pointer-events: none; z-index: 500; box-shadow: inset 0 0 160px 40px hsl(var(--background)); }
+.hero-result { position: absolute; z-index: 600; left: 5%; bottom: 40px; max-width: 320px; padding: 20px; border: 1px solid hsl(var(--border)); border-radius: 8px; background: hsl(var(--card) / .9); backdrop-filter: blur(8px); animation: result-in .7s cubic-bezier(.2,.8,.2,1) both; }
+.hero-result h3 { font-size: 20px; margin: 10px 0 6px; }.hero-result p { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 4px; }.hero-result-actions { display: flex; gap: 8px; margin-top: 14px; }
+.hero-map .location-marker span { animation: marker-pop .6s cubic-bezier(.2,1.4,.4,1) both; }
+@keyframes map-in { from { opacity: 0; transform: scale(1.06); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes result-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes marker-pop { from { transform: scale(0); } to { transform: scale(1); } }

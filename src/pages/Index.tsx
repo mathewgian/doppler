@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import LocatorMap, { ICICS } from "@/components/LocatorMap";
 import { ArrowDown, ArrowRight, AudioLines, Globe2, Menu, Radio, ShieldCheck, Waves, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AudioWorkspace from "@/components/AudioWorkspace";
@@ -7,22 +8,31 @@ import globe from "@/assets/signal-globe.jpg";
 const Index = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [demoRequest, setDemoRequest] = useState(0);
+  const [phase, setPhase] = useState<"idle" | "zooming" | "map" | "arrived">("idle");
+  useEffect(() => {
+    if (phase !== "zooming") return;
+    const t = setTimeout(() => setPhase("map"), 2300);
+    return () => clearTimeout(t);
+  }, [phase]);
+  const startLocate = () => { setMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); setPhase("zooming"); };
   const openWorkspace = () => { document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth" }); setMenuOpen(false); };
   const openDemo = () => { setDemoRequest(value => value + 1); openWorkspace(); };
   return (
     <div className="locator-site min-h-screen overflow-x-hidden">
       <header className="site-header">
         <a href="#" className="brand"><Globe2 size={22} /> GeoLocator<span className="brand-audio">/ audio</span></a>
-        <nav className="desktop-nav"><a href="#technology">Technology</a><a href="#workspace">Workspace</a><Button variant="ghost" onClick={openDemo}>View demo <ArrowRight size={13} /></Button></nav>
+        <nav className="desktop-nav"><a href="#technology">Technology</a><a href="#workspace">Workspace</a><Button variant="ghost" onClick={startLocate}>View demo <ArrowRight size={13} /></Button></nav>
         <Button onClick={openWorkspace} className="nav-cta">Get started <ArrowRight /></Button>
         <Button size="icon" variant="ghost" className="mobile-menu" aria-label={menuOpen ? "Close menu" : "Open menu"} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</Button>
-        {menuOpen && <nav className="mobile-nav"><a href="#technology" onClick={() => setMenuOpen(false)}>Technology</a><a href="#workspace" onClick={() => setMenuOpen(false)}>Workspace</a><Button variant="ghost" onClick={openDemo}>View demo <ArrowRight /></Button></nav>}
+        {menuOpen && <nav className="mobile-nav"><a href="#technology" onClick={() => setMenuOpen(false)}>Technology</a><a href="#workspace" onClick={() => setMenuOpen(false)}>Workspace</a><Button variant="ghost" onClick={startLocate}>View demo <ArrowRight /></Button></nav>}
       </header>
       <main>
-        <section className="globe-hero">
+        <section className={`globe-hero phase-${phase}`}>
           <div className="globe-background" aria-hidden="true"><img src={globe} width={1024} height={1024} alt="" /><div className="globe-crosshair crosshair-one">+</div><div className="globe-crosshair crosshair-two">+</div></div>
           <div className="hero-side-label left-label">SIGNAL → LOCATION</div><div className="hero-side-label right-label">49° 16′ N / 123° 07′ W</div>
-          <div className="hero-content"><div className="hero-eyebrow"><span className="status-dot" /> SOUND. SIGNAL. SOMEWHERE.</div><h1>Find where<br />a sound <span>begins.</span></h1><p>A world of signals. One point of origin.<br />Explore audio geolocation through Doppler shifts<br className="desktop-break" /> and the frequencies of aircraft overhead.</p><div className="hero-actions"><Button className="primary-cta" onClick={openWorkspace}>Locate a sound <ArrowRight size={17} /></Button><Button variant="ghost" className="demo-cta" onClick={openDemo}>Explore the demo <ArrowRight size={15} /></Button></div><div className="hero-note"><ShieldCheck size={12} /> No account needed <span>·</span> Audio stays on your device</div></div>
+          <div className="hero-content"><div className="hero-eyebrow"><span className="status-dot" /> SOUND. SIGNAL. SOMEWHERE.</div><h1>Find where<br />a sound <span>begins.</span></h1><p>A world of signals. One point of origin.<br />Explore audio geolocation through Doppler shifts<br className="desktop-break" /> and the frequencies of aircraft overhead.</p><div className="hero-actions"><Button className="primary-cta" onClick={startLocate}>Locate a sound <ArrowRight size={17} /></Button><Button variant="ghost" className="demo-cta" onClick={startLocate}>Explore the demo <ArrowRight size={15} /></Button></div><div className="hero-note"><ShieldCheck size={12} /> No account needed <span>·</span> Audio stays on your device</div></div>
+          {(phase === "map" || phase === "arrived") && <div className="hero-map"><LocatorMap cinematic className="hero-map-canvas" onArrive={() => setPhase("arrived")} /><div className="hero-map-vignette" aria-hidden="true" /></div>}
+          {phase === "arrived" && <div className="hero-result"><span className="demo-label">SIMULATED RESULT</span><h3>{ICICS.name}</h3><p className="coordinates">49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="hero-result-actions"><Button size="sm" onClick={openDemo}>Open in workspace <ArrowRight /></Button><Button size="sm" variant="ghost" onClick={() => setPhase("idle")}>Reset</Button></div></div>}
           <div className="hero-bottom"><span><Radio size={13} /> THE WORLD IS ALWAYS TRANSMITTING</span><a href="#workspace" aria-label="Go to audio workspace"><ArrowDown size={18} /></a><span>LISTEN CLOSER.</span></div>
         </section>
         <AudioWorkspace demoRequest={demoRequest} />

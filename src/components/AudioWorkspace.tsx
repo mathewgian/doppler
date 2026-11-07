@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, AudioLines, Check, FileAudio, Loader2, Mic, RotateCcw, ShieldCheck, Square, Upload, X, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import LocatorMap from "./LocatorMap";
+import LocatorMap, { ICICS } from "./LocatorMap";
 
 export default function AudioWorkspace({ demoRequest }: { demoRequest: number }) {
   const [audio, setAudio] = useState<{ name: string; url: string } | null>(null);
@@ -73,7 +73,7 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
       <div className="tool-topline"><h2>{stage === "result" ? "Location estimate" : "Every sound has a starting point."}</h2><span className="local-label"><ShieldCheck size={14} /> Local & private</span></div>
       {stage === "result" ? <div className="result-layout">
         <LocatorMap />
-        <div className="result-details"><span className="demo-label">SIMULATED RESULT</span><h3>Vancouver, Canada</h3><p className="coordinates"><MapPin size={14} /> 49.2827° N, 123.1207° W</p><div className="result-divider" /><p>This is a sample location, not a location inferred from your recording.</p><dl><div><dt>Doppler analysis</dt><dd>Not connected</dd></div><div><dt>Aircraft correlation</dt><dd>Not connected</dd></div><div><dt>Location confidence</dt><dd>Unavailable</dd></div></dl><Button variant="outline" onClick={() => setStage("ready")}><RotateCcw /> New recording</Button></div>
+        <div className="result-details"><span className="demo-label">SIMULATED RESULT</span><h3>{ICICS.name}</h3><p className="coordinates"><MapPin size={14} /> 49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="result-divider" /><p>This is a sample location, not a location inferred from your recording.</p><dl><div><dt>Doppler analysis</dt><dd>Not connected</dd></div><div><dt>Aircraft correlation</dt><dd>Not connected</dd></div><div><dt>Location confidence</dt><dd>Unavailable</dd></div></dl><Button variant="outline" onClick={() => setStage("ready")}><RotateCcw /> New recording</Button></div>
       </div> : stage === "running" ? <div className="analysis-state" role="status"><Loader2 className="animate-spin" size={30} /><h3>Preparing sample location…</h3><p>Demonstration only · no real location analysis</p><div className="analysis-progress"><span /></div></div> : <>
         <div className="input-options">
           <div className={`upload-zone ${dragging ? "is-dragging" : ""}`} onDragOver={event => { event.preventDefault(); setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={event => { event.preventDefault(); setDragging(false); const file = event.dataTransfer.files[0]; if (file && !recording) loadFile(file); }}>
