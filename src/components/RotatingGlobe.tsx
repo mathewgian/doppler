@@ -3,11 +3,13 @@ import * as THREE from "three";
 import land from "@/assets/earth-land-dots.jpg.asset.json";
 import fallback from "@/assets/signal-globe.jpg";
 
-export default function RotatingGlobe({ active }: { active: boolean }) {
+export default function RotatingGlobe({ active, zoomProgress = 0, target }: { active: boolean; zoomProgress?: number; target?: { lat: number; lng: number } }) {
   const host = useRef<HTMLDivElement>(null);
   const activeRef = useRef(active);
+  const flightRef = useRef({ zoomProgress, target });
   const [ready, setReady] = useState(false);
   useEffect(() => { activeRef.current = active; }, [active]);
+  useEffect(() => { flightRef.current = { zoomProgress, target }; }, [zoomProgress, target]);
 
   useEffect(() => {
     const element = host.current;
@@ -29,6 +31,7 @@ export default function RotatingGlobe({ active }: { active: boolean }) {
     const earth = new THREE.Group();
     earth.rotation.y = 0;
     tilted.add(earth); scene.add(tilted);
+    const initialTilt = tilted.quaternion.clone();
     const sphereGeometry = new THREE.SphereGeometry(1, 96, 64);
     const sphereMaterial = new THREE.MeshBasicMaterial({ color: surface });
     earth.add(new THREE.Mesh(sphereGeometry, sphereMaterial));
@@ -72,6 +75,17 @@ export default function RotatingGlobe({ active }: { active: boolean }) {
     renderer.setAnimationLoop(time => {
       const delta = previous ? Math.min((time - previous) / 1000, 0.1) : 0; previous = time;
       if (visible && activeRef.current && !reduced.matches && !document.hidden) earth.rotation.y += delta * Math.PI * 2 / 180;
+      const flight = flightRef.current;
+      if (flight.target) {
+        const p = Math.max(0, Math.min(1, flight.zoomProgress));
+        const eased = p * p * (3 - 2 * p);
+        const lat = THREE.MathUtils.degToRad(flight.target.lat), lon = THREE.MathUtils.degToRad(flight.target.lng);
+        // SphereGeometry's equirectangular UV convention: +X is longitude 180°, +Z is -90°.
+        const destination = new THREE.Vector3(-Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon));
+        tilted.quaternion.copy(initialTilt).slerp(new THREE.Quaternion().setFromUnitVectors(destination, new THREE.Vector3(0, 0, 1)), eased);
+        camera.position.z = 1.025 + (3.65 - 1.025) * Math.pow(1 - eased, 2);
+        camera.near = 0.001; camera.updateProjectionMatrix();
+      }
       if (visible) renderer.render(scene, camera);
     });
     return () => {
@@ -81,5 +95,5 @@ export default function RotatingGlobe({ active }: { active: boolean }) {
     };
   }, []);
 
-  return <><img className={ready ? "globe-fallback globe-loaded" : "globe-fallback"} src={fallback} width={1024} height={1024} alt="" /><div ref={host} className={ready ? "rotating-globe is-ready" : "rotating-globe"} /></>;
+  return <><img className={ready ? "globe-fallback globe-loaded" : "globe-fallback"} src={fallback} width={1024} height={1024} alt="" /><div ref={host} data-scene-ready={ready || undefined} className={ready ? "rotating-globe is-ready" : "rotating-globe"} /></>;
 }

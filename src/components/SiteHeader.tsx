@@ -14,9 +14,9 @@ export default function SiteHeader({ onHome, onDemo, onStart }: { onHome?: () =>
   const links = <><Link to="/#technology" onClick={() => { close(); document.getElementById("technology")?.scrollIntoView({ behavior: "smooth" }); }}>Technology</Link><Link to="/#workspace" onClick={() => { close(); if (onStart) onStart(); }}>Workspace</Link></>;
   return <header className="site-header">
     <Link to="/" className="brand" onClick={home} aria-label="Doppler home"><Globe2 size={22} /> Doppler<span className="brand-audio">/ audio</span></Link>
-    <nav className="desktop-nav">{links}<Button variant="ghost" onClick={demo}>View demo <ArrowRight size={13} /></Button></nav>
+    <nav className="desktop-nav">{links}<Button variant="ghost" onClick={demo}>Try Demo <ArrowRight size={13} /></Button></nav>
     <Button onClick={start} className="nav-cta">Get started <ArrowRight /></Button>
     <Button size="icon" variant="ghost" className="mobile-menu" aria-label={menuOpen ? "Close menu" : "Open menu"} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</Button>
-    {menuOpen && <nav className="mobile-nav">{links}<Button variant="ghost" onClick={demo}>View demo <ArrowRight /></Button></nav>}
+    {menuOpen && <nav className="mobile-nav">{links}<Button variant="ghost" onClick={demo}>Try Demo <ArrowRight /></Button></nav>}
   </header>;
 }

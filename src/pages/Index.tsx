@@ -8,18 +8,20 @@ import { Button } from "@/components/ui/button";
 import AudioWorkspace from "@/components/AudioWorkspace";
 import HikerDemo from "@/components/HikerDemo";
 import RotatingGlobe from "@/components/RotatingGlobe";
+import CinematicHikerDemo from "@/components/CinematicHikerDemo";
 
 const Index = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [demoRequest, setDemoRequest] = useState(0);
+  const [hikerDemoOpen, setHikerDemoOpen] = useState(false);
   const [phase, setPhase] = useState<"idle" | "zooming" | "map" | "arrived">("idle");
   const startLocate = () => { window.scrollTo({ top: 0, behavior: "smooth" }); setPhase("zooming"); };
   const openWorkspace = () => { document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth" }); };
-  const openHikerDemo = () => { document.getElementById("hiker-demo")?.scrollIntoView({ behavior: "smooth" }); };
+  const openHikerDemo = () => { document.querySelectorAll("audio").forEach(audio => audio.pause()); setHikerDemoOpen(true); };
   const returnHome = () => { setPhase("idle"); navigate("/", { replace: true }); window.scrollTo({ top: 0 }); };
   useEffect(() => {
-    if (location.search === "?demo=1") { setPhase("zooming"); navigate("/", { replace: true }); }
+    if (location.search === "?demo=1") { setHikerDemoOpen(true); navigate("/", { replace: true }); }
     if (location.hash === "#workspace" || location.hash === "#technology") document.getElementById(location.hash.slice(1))?.scrollIntoView();
   }, [location.search, location.hash, navigate]);
   const openDemo = () => { setDemoRequest(value => value + 1); openWorkspace(); };
@@ -35,11 +37,12 @@ const Index = () => {
           {phase === "arrived" && <div className="hero-result"><span className="demo-label">SIMULATED RESULT</span><h3>{ICICS.name}</h3><p className="coordinates">49.2613° N, 123.2489° W</p><p>{ICICS.address}</p><div className="hero-result-actions"><Button size="sm" onClick={openDemo}>Open in workspace <ArrowRight /></Button><Button size="sm" variant="ghost" onClick={() => setPhase("idle")}>Reset</Button></div></div>}
           <div className="hero-bottom"><span><Radio size={13} /> THE WORLD IS ALWAYS TRANSMITTING</span><a href="#workspace" aria-label="Go to audio workspace"><ArrowDown size={18} /></a><span>LISTEN CLOSER.</span></div>
         </section>
-        <HikerDemo />
+        <HikerDemo onTryDemo={openHikerDemo} />
         <AudioWorkspace demoRequest={demoRequest} />
         <TechnologySection />
       </main>
       <footer className="locator-footer"><Link to="/" onClick={returnHome} className="brand"><Globe2 size={19} /> Doppler<span className="brand-audio">/ audio</span></Link><span>An exploration in acoustic geolocation.</span><span className="footer-status"><span className="status-dot" /> Experimental preview</span></footer>
+      <CinematicHikerDemo open={hikerDemoOpen} onOpenChange={setHikerDemoOpen} />
     </div>
   );
 };

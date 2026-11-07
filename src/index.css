@@ -203,6 +203,35 @@ All colors MUST be HSL.
 .rotating-globe canvas { display: block; width: 100%; height: 100%; }
 .globe-fallback { transition: opacity 1s ease; }
 .globe-loaded { opacity: 0; }
+.cinematic-demo-dialog { inset: 0; left: 0; top: 0; width: 100%; height: 100dvh; max-width: none; transform: none; padding: 0; border: 0; border-radius: 0; display: block; animation: none !important; overflow: hidden; }
+.cinematic-demo-dialog>button:last-child { z-index: 1000; }
+.cinematic-demo { position: relative; width: 100%; height: 100%; background: hsl(var(--background)); font-family: 'DM Sans', sans-serif; }
+.demo-topbar { position: absolute; top: 0; left: 0; right: 0; padding: 22px 64px 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 15px; z-index: 800; background: hsl(var(--background) / .8); }
+.demo-topbar>div { display: flex; gap: 8px; }.demo-topbar button { font-size: 12px; }
+.demo-audio-scene { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transition: opacity 1s ease; }
+.demo-phase-fade .demo-audio-scene { opacity: 0; }
+.fullscreen-audio { width: 100%; max-width: 760px; margin: 0; }
+.fullscreen-audio .hiker-player { padding: 30px 0; border: 0; border-radius: 0; background: transparent; }
+.fullscreen-audio .hiker-player-heading h3 { font-size: 26px; }.fullscreen-audio .hiker-battery { font-size: 13px; }
+.demo-earth-scene,.demo-map-scene { position: absolute; inset: 0; transition: opacity 1s ease; }
+.demo-earth-scene { z-index: 500; pointer-events: none; }
+.demo-earth-scene .globe-fallback { width: 100%; height: 100%; object-fit: contain; }
+.demo-earth-blend,.demo-map-hidden { opacity: 0; }
+.demo-destination { position: absolute; bottom: 48px; left: 32px; }
+.demo-destination span { font: 10px monospace; color: hsl(var(--muted-foreground)); }.demo-destination h2 { font-size: 32px; margin: 12px 0 6px; }.demo-destination p { color: hsl(var(--muted-foreground)); font-size: 13px; }
+.sim-search { position: absolute; inset: 0; }.demo-search-map { position: absolute; inset: 0; color: hsl(var(--foreground)); background: hsl(var(--background)); }
+.demo-search-map .leaflet-tile-pane { filter: grayscale(1) brightness(.65); }
+.demo-plane { font-size: 30px; color: hsl(var(--foreground)); text-align: center; line-height: 32px; text-shadow: var(--globe-shadow); }
+.demo-search-readout { position: absolute; z-index: 600; left: 24px; bottom: 36px; width: min(370px, calc(100% - 48px)); background: hsl(var(--card) / .95); border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 22px; }
+.demo-search-readout h2 { font-size: 22px; margin: 14px 0 8px; }.demo-search-readout p { font-size: 12px; line-height: 1.7; color: hsl(var(--muted-foreground)); }
+.demo-search-readout svg { display: block; width: 100%; height: 72px; margin-top: 16px; }.demo-curve-point { fill: hsl(var(--signal)); }
+.demo-search-readout dl { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }.demo-search-readout dt { font-size: 10px; color: hsl(var(--muted-foreground)); }.demo-search-readout dd { font: 16px monospace; margin-top: 5px; color: hsl(var(--signal)); }
+.demo-search-readout .demo-exact-coordinates { color: hsl(var(--foreground)); font: 12px monospace; overflow-wrap: anywhere; margin: 16px 0; }
+@media(max-width:700px) {
+  .demo-topbar { padding: 18px 46px 14px 14px; align-items: flex-start; flex-direction: column; gap: 8px; }.demo-topbar>div { gap: 0; }.demo-topbar button { font-size: 11px; padding: 0 10px; }
+  .fullscreen-audio { padding: 0 24px; }.fullscreen-audio .hiker-player-heading h3 { font-size: 22px; }
+  .demo-search-readout { left: 16px; bottom: 32px; width: calc(100% - 32px); padding: 16px; }.demo-search-readout h2 { font-size: 20px; }
+}
 @media(max-width:700px) { .hero-bottom>span:first-child { left: 0; } }
 
 /* Technology: open editorial sections surrounding a single framed physics tool. */
