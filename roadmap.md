@@ -5,6 +5,7 @@
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
 # Location logic & pages
+- [ ] Verify OpenSky OAuth flight lookup: credentials saved and function deployed, but the live sign-in request timed out. Blocked by OpenSky connectivity; keep audio analysis separate.
 - [ ] Real location logic: synthetic tests exist; live results blocked by unavailable, unverified OpenSky flight access. Keep public location results simulated.
 - [x] Verify GeoLocator title/brand returns to the opening screen, including after the demo.
 - [x] Finish and verify Technology page: existing content, plain-language explanations and interactive flight-path/frequency visual on desktop and mobile.

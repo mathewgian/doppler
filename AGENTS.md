@@ -1,4 +1,5 @@
 # Project rules
+- Authenticate OpenSky only server-side using saved OAuth client credentials; never expose provider response bodies or tokens in errors because they may contain sensitive data.
 - Keep the audio locator frontend self-contained and its results explicitly simulated until a real analysis service exists; audio alone does not establish a reliable caller location.
 - Use Leaflet with credited OpenStreetMap raster tiles for the location-result map, requiring no provider key.
 - Keep audio files local in browser memory and revoke object URLs on replacement or unmount.

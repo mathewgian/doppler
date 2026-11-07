@@ -13,9 +13,10 @@ async function getToken(): Promise<string | null> {
   const id = Deno.env.get("OPENSKY_CLIENT_ID"), secret = Deno.env.get("OPENSKY_CLIENT_SECRET");
   if (!id || !secret) return null;
   if (cached && cached.exp > Date.now() + 30_000) return cached.token;
-  const res = await fetch(TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "client_credentials", client_id: id, client_secret: secret }) });
-  if (!res.ok) throw new Error(`OpenSky sign-in failed [${res.status}]: ${await res.text()}`);
+  const res = await fetch(TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ grant_type: "client_credentials", client_id: id, client_secret: secret }), signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new Error(`OpenSky sign-in failed [${res.status}]. Check the saved API client credentials.`);
   const j = await res.json();
+  if (typeof j.access_token !== "string" || !j.access_token) throw new Error("OpenSky did not issue an access token.");
   cached = { token: j.access_token, exp: Date.now() + (j.expires_in ?? 1800) * 1000 };
   return cached.token;
 }
@@ -48,8 +49,7 @@ Deno.serve(async req => {
       const res = await fetch(`${API}?${q}`, { headers, signal: AbortSignal.timeout(20_000) });
       remaining = res.headers.get("x-rate-limit-remaining") ?? remaining;
       if (!res.ok) {
-        const text = await res.text();
-        throw Object.assign(new Error(`OpenSky request failed [${res.status}]: ${text.slice(0, 300)}`), { status: res.status });
+        throw Object.assign(new Error(`OpenSky flight-data request failed [${res.status}].`), { status: res.status });
       }
       const j = await res.json();
       // anonymous access ignores `time` and returns live data; never mix the wrong moment into the search
@@ -78,7 +78,8 @@ Deno.serve(async req => {
     return json({ tracks: out, meta: { requests: times.length, snapshots: used, skipped: mismatched, step, authenticated: !!token, creditsRemaining: remaining } });
   } catch (e) {
     const status = (e as { status?: number }).status;
-    console.error("opensky-flights failed:", e);
-    return json({ error: e instanceof Error ? e.message : "Flight lookup failed." }, status === 429 || status === 504 ? status : 502);
+    const message = e instanceof Error && e.message.startsWith("OpenSky") ? e.message : "Flight lookup failed. Please try again later.";
+    console.error("opensky-flights failed:", { status: status ?? 502 });
+    return json({ error: message }, status === 429 || status === 504 ? status : 502);
   }
 });
