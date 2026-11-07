@@ -12,7 +12,7 @@ export default function LocatorMap({ cinematic = false, className = "locator-map
     if (!container.current) return;
     const target: L.LatLngTuple = [ICICS.lat, ICICS.lng];
     const map = L.map(container.current, { scrollWheelZoom: false, zoomControl: !cinematic, zoomSnap: 0 })
-      .setView(cinematic ? [44, -110] : target, cinematic ? 3 : 17);
+      .setView(cinematic ? [30, -160] : target, cinematic ? 2.5 : 17);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>', maxZoom: 19 }).addTo(map);
     const marker = L.divIcon({ className: "location-marker", html: "<span></span>", iconSize: [24, 24], iconAnchor: [12, 12] });
     const addMarker = () => {
@@ -21,9 +21,8 @@ export default function LocatorMap({ cinematic = false, className = "locator-map
     };
     let timers: ReturnType<typeof setTimeout>[] = [];
     if (cinematic) {
-      timers.push(setTimeout(() => map.flyTo([49.25, -123.15], 11, { duration: 2.6, easeLinearity: 0.15 }), 400));
-      timers.push(setTimeout(() => map.flyTo(target, 18, { duration: 2.8, easeLinearity: 0.1 }), 3200));
-      timers.push(setTimeout(() => { addMarker(); onArrive?.(); }, 6200));
+      map.once("moveend", () => { addMarker(); onArrive?.(); });
+      timers.push(setTimeout(() => map.flyTo(target, 18, { duration: 6.5, easeLinearity: 0.05 }), 50));
     } else addMarker();
     return () => { timers.forEach(clearTimeout); timers = []; map.remove(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
