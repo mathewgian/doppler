@@ -1,4 +1,5 @@
 # Audio locator
+- [x] Replace flat image spin with a globe rotating around its polar axis; verified desktop/mobile, reduced motion and existing map transition/reset.
 - [x] Align transmitting label with the account note and slowly spin the globe; verified layout and reduced motion.
 - [x] Add Stawamus Chief fictional hiker demo with uploaded recording, playback controls and honest analysis availability; verified desktop/mobile. No audio-analysis API exists; no detections are generated.
 - [x] Replace camping home with globe-backed audio locator.

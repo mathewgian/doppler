@@ -7,7 +7,7 @@ import { ArrowDown, ArrowRight, Globe2, Radio, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import AudioWorkspace from "@/components/AudioWorkspace";
 import HikerDemo from "@/components/HikerDemo";
-import globe from "@/assets/signal-globe.jpg";
+import RotatingGlobe from "@/components/RotatingGlobe";
 
 const Index = () => {
   const location = useLocation();
@@ -28,7 +28,7 @@ const Index = () => {
       <SiteHeader onHome={returnHome} onDemo={openHikerDemo} onStart={openWorkspace} />
       <main>
         <section className={`globe-hero phase-${phase}`}>
-          <div className="globe-background" aria-hidden="true"><img src={globe} width={1024} height={1024} alt="" /><div className="globe-crosshair crosshair-one">+</div><div className="globe-crosshair crosshair-two">+</div></div>
+          <div className="globe-background" aria-hidden="true"><RotatingGlobe active={phase === "idle"} /><div className="globe-crosshair crosshair-one">+</div><div className="globe-crosshair crosshair-two">+</div></div>
           <div className="hero-side-label left-label">SIGNAL → LOCATION</div><div className="hero-side-label right-label">49° 16′ N / 123° 07′ W</div>
           <div className="hero-content"><div className="hero-eyebrow"><span className="status-dot" /> SOUND. SIGNAL. SOMEWHERE.</div><h1 className="headline-reveal"><span className="headline-text">Find where<br />a sound <span className="headline-muted">begins.</span></span></h1><p>A world of signals. One point of origin.<br />Explore audio geolocation through Doppler shifts<br className="desktop-break" /> and the frequencies of aircraft overhead.</p><div className="hero-actions"><Button className="primary-cta" onClick={startLocate}>Locate a sound <ArrowRight size={17} /></Button><Button variant="ghost" className="demo-cta" onClick={startLocate}>Explore the demo <ArrowRight size={15} /></Button></div><div className="hero-note"><ShieldCheck size={12} /> No account needed <span>·</span> Audio stays on your device</div></div>
           {phase !== "idle" && <div className="hero-map"><LocatorMap cinematic className="hero-map-canvas" onArrive={() => setPhase("arrived")} /><div className="hero-map-vignette" aria-hidden="true" /></div>}

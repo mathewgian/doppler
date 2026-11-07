@@ -188,7 +188,6 @@ All colors MUST be HSL.
 .globe-hero:not(.phase-idle) .hero-content { opacity: 0; transform: translateY(-14px) scale(.98); filter: blur(6px); pointer-events: none; }
 .globe-hero:not(.phase-idle) .hero-side-label, .globe-hero:not(.phase-idle) .hero-bottom { opacity: 0; pointer-events: none; }
 .globe-hero:not(.phase-idle) .globe-background { opacity: 0; transform: translateX(-50%) scale(3.4) translateY(6%); transition: transform 2.6s cubic-bezier(.45,0,.2,1), opacity 2.2s ease .4s; }
-.globe-hero:not(.phase-idle) .globe-background img { transform: rotate(-40deg); transition: transform 2.6s cubic-bezier(.45,0,.2,1); }
 .hero-map { position: absolute; inset: 0; z-index: 3; animation: map-in 2s cubic-bezier(.4,0,.2,1) .3s both; }
 .hero-map-canvas { position: absolute; inset: 0; background: hsl(var(--background)); }
 .hero-map-canvas .leaflet-tile-pane { filter: grayscale(1) invert(1) contrast(.9) brightness(.85); }
@@ -199,8 +198,11 @@ All colors MUST be HSL.
 @keyframes map-in { from { opacity: 0; transform: scale(.85); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
 @keyframes result-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @keyframes marker-pop { from { transform: scale(0); } to { transform: scale(1); } }
-.phase-idle .globe-background img { animation: globe-spin 180s linear infinite; }
-@keyframes globe-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.rotating-globe { position: absolute; inset: 0; color: hsl(var(--foreground)); background-color: hsl(var(--background)); opacity: 0; transition: opacity 1s ease; }
+.rotating-globe.is-ready { opacity: 1; }
+.rotating-globe canvas { display: block; width: 100%; height: 100%; }
+.globe-fallback { transition: opacity 1s ease; }
+.globe-loaded { opacity: 0; }
 @media(max-width:700px) { .hero-bottom>span:first-child { left: 0; } }
 
 /* Technology: open editorial sections surrounding a single framed physics tool. */
