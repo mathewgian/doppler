@@ -46,7 +46,7 @@ const Index = () => {
         <AudioWorkspace demoRequest={demoRequest} />
         <TechnologySection />
       </main>
-      <footer className="locator-footer"><Link to="/" onClick={returnHome} className="brand"><Globe2 size={19} /> Doppler<span className="brand-audio">/ audio</span></Link><span>An exploration in acoustic geolocation.</span><span className="footer-status"><span className="status-dot" /> Experimental preview</span></footer>
+      <footer className="locator-footer"><Link to="/" onClick={returnHome} className="brand"><Globe2 size={19} /> Doppler</Link><span>An exploration in acoustic geolocation.</span><span className="footer-status"><span className="status-dot" /> Experimental preview</span></footer>
       <CinematicHikerDemo open={hikerDemoOpen} onOpenChange={setHikerDemoOpen} />
     </div>
   );
