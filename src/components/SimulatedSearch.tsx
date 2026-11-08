@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import LocatorMap from "./LocatorMap";
 import { demoRadius, demoSample, HIKER_DEMO } from "@/lib/hiker-demo-config";
+import { layoutDemoFlight, sampleDemoFlight } from "@/lib/demo-flight-layout";
 
 export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: { progress: number; cameraZoom: number; cameraPaused: boolean }) {
   const layers = useRef<{ map: L.Map; region: L.Circle; hiker: L.Marker; updateFlight: () => void }>();
@@ -41,7 +42,7 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
   return <div className="sim-search" data-camera-zoom={cameraZoom.toFixed(4)}>
     <LocatorMap location={HIKER_DEMO.location} showMarker={false} zoom={HIKER_DEMO.mapCamera.initialZoom} className="demo-search-map" onReady={map => {
       map.zoomControl.remove();
-      const route = HIKER_DEMO.flight.map(p => [p.lat, p.lng] as L.LatLngTuple);
+      const route = HIKER_DEMO.flight.map(p => map.project([p.lat, p.lng], HIKER_DEMO.mapCamera.initialZoom));
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("class", "demo-flight-overlay");
       const makePath = (className: string) => {
@@ -57,29 +58,21 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
       const plane = L.DomUtil.create("div", "demo-plane demo-plane-overlay", map.getContainer());
       plane.textContent = "✈";
       const edgeLabel = L.DomUtil.create("span", "demo-aircraft-edge-label", map.getContainer());
-      edgeLabel.textContent = "Aircraft outside close-up";
+      edgeLabel.textContent = "Full flight route · fixed-scale schematic";
       const updateFlight = () => {
-        const current = demoSample(flightProgress.current);
-        const project = (lat: number, lng: number) => map.latLngToContainerPoint([lat, lng]);
-        const points = (coords: L.LatLngTuple[]) => coords.map(([lat, lng]) => {
-          const point = project(lat, lng);
-          return `${point.x},${point.y}`;
-        }).join(" ");
-        line.setAttribute("points", points(route));
-        const passed = HIKER_DEMO.flight.filter(p => Date.parse(p.timestamp) <= current.timestamp).map(p => [p.lat, p.lng] as L.LatLngTuple);
-        trail.setAttribute("points", points([...passed, [current.lat, current.lng]]));
-        const point = project(current.lat, current.lng);
         const size = map.getSize();
-        const x = Math.max(32, Math.min(size.x - 32, point.x));
-        const y = Math.max(112, Math.min(size.y - 55, point.y));
-        const outside = x !== point.x || y !== point.y;
+        const layout = layoutDemoFlight(route, size.x, size.y);
+        const { point, passed } = sampleDemoFlight(layout, flightProgress.current);
+        const points = (coords: { x: number; y: number }[]) => coords.map(p => `${p.x},${p.y}`).join(" ");
+        line.setAttribute("points", points(layout));
+        trail.setAttribute("points", points(passed));
+        const { x, y } = point;
         plane.style.left = `${x}px`;
         plane.style.top = `${y}px`;
-        plane.title = outside ? "Aircraft outside close-up; indicator points toward its position" : "Simulated aircraft";
+        plane.title = "Simulated aircraft on fixed-scale flight schematic";
         plane.setAttribute("aria-label", plane.title);
-        edgeLabel.hidden = !outside;
-        edgeLabel.style.left = `${Math.max(8, Math.min(size.x - 185, x - 80))}px`;
-        edgeLabel.style.top = `${y + 28}px`;
+        edgeLabel.style.left = `${Math.max(8, size.x / 2 - 125)}px`;
+        edgeLabel.style.top = `${Math.max(...layout.map(p => p.y)) + 32}px`;
       };
       map.on("move resize", updateFlight);
       const region = L.circle([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { radius: HIKER_DEMO.search.initialRadiusM, opacity: 0, fillOpacity: 0 }).addTo(map);
