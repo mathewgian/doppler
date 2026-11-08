@@ -1,4 +1,5 @@
 # Project rules
+- Buffer the entire short demo voice recording into a local object URL before autoplay and revoke it on unmount, so concurrent scene loading cannot stall streamed playback.
 - Detect short recordings with duration-aware coherent ridge criteria and bounded local-frequency pooling, rejecting incomplete closest approaches; when no Doppler curve matches, fall back to absorption-gated 3–6 kHz broadband arrival matching against archived tracks, always low confidence and regression-tested against the Kitsilano reference fixture, so loud jets without clean tones still yield honest path-constrained estimates.
 - Prefill recording start from embedded recorder timestamps (ID3/QuickTime) and never read location tags, because the UTC archive day depends on the true time while location must come only from acoustics.
 - Use a bounded local terrain grid and delayed piecewise 3D aircraft curves for coarse-to-fine recording analysis; lock event clock shifts and bound archive requests and ridge-tracer memory to keep broad searches feasible without changing the cinematic simulation.

@@ -16,11 +16,40 @@ export default function HikerDemo({ fullscreen = false, onEnded, onTryDemo }: { 
   const [position, setPosition] = useState(0);
   const [audioError, setAudioError] = useState("");
   const [analysisRequested, setAnalysisRequested] = useState(false);
+  const [playbackUrl, setPlaybackUrl] = useState<string>();
   useEffect(() => {
-    if (!fullscreen) return;
-    audio.current?.play().catch(() => setAudioError("Autoplay was blocked. Press play to listen."));
-    return () => { audio.current?.pause(); };
-  }, [fullscreen]);
+    const controller = new AbortController();
+    let objectUrl: string | undefined;
+    // Buffer this short recording completely before playing. Range-streaming it
+    // alongside the Earth/map preload can otherwise interrupt the voice message.
+    const load = async () => {
+      try {
+        const response = await fetch(recording.url, { signal: controller.signal });
+        if (!response.ok) throw new Error("Recording unavailable");
+        const blob = await response.blob();
+        if (controller.signal.aborted) return;
+        if (!blob.type.startsWith("audio/")) throw new Error("Invalid recording");
+        objectUrl = URL.createObjectURL(blob);
+        setPlaybackUrl(objectUrl);
+      } catch {
+        if (!controller.signal.aborted) setAudioError("The recording is unavailable. Please reload and try again.");
+      }
+    };
+    void load();
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, []);
+  useEffect(() => {
+    const player = audio.current;
+    if (!fullscreen || !playbackUrl || !player) return;
+    let active = true;
+    void player.play().catch(() => {
+      if (active) setAudioError("Autoplay was blocked. Press play to listen.");
+    });
+    return () => { active = false; player.pause(); };
+  }, [fullscreen, playbackUrl]);
 
   const togglePlayback = async () => {
     const player = audio.current;
@@ -39,13 +68,13 @@ export default function HikerDemo({ fullscreen = false, onEnded, onTryDemo }: { 
     {!fullscreen && <p className="hiker-story">A fictional hiker at Stawamus Chief leaves a final voice message before their phone battery runs out. The setting is supplied for the story, not detected from the audio.</p>}
     <div className="hiker-player">
       <div className="hiker-player-heading"><h3><Volume2 size={18} /> Last Known Voice Message</h3><span className="hiker-battery"><BatteryLow size={18} /> 2% Battery</span></div>
-      <audio ref={audio} src={recording.url} preload="metadata" aria-label="Fictional hiker voice recording"
+      <audio ref={audio} src={playbackUrl} preload="auto" aria-label="Fictional hiker voice recording"
         onLoadedMetadata={event => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
         onTimeUpdate={event => setPosition(event.currentTarget.currentTime)}
         onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => { setPlaying(false); onEnded?.(); }}
         onError={() => setAudioError("The recording is unavailable. Please reload and try again.")} />
       <div className="hiker-playback">
-        <Button variant="outline" size="icon" aria-label={playing ? "Pause voice message" : "Play voice message"} title={playing ? "Pause" : "Play"} onClick={togglePlayback}>{playing ? <Pause size={18} /> : <Play size={18} />}</Button>
+        <Button variant="outline" size="icon" disabled={!playbackUrl} aria-label={playing ? "Pause voice message" : "Play voice message"} title={playing ? "Pause" : "Play"} onClick={togglePlayback}>{playing ? <Pause size={18} /> : <Play size={18} />}</Button>
         <Slider aria-label="Voice message progress" min={0} max={duration || 1} step={0.1} value={[Math.min(position, duration || 1)]} disabled={!duration} onValueChange={([value]) => { if (audio.current && value !== undefined) { audio.current.currentTime = value; setPosition(value); } }} />
         <span className="hiker-time" aria-label={`Elapsed ${clock(position)}, duration ${clock(duration)}`}>{clock(position)} <span>/</span> {duration ? clock(duration) : "—:—"}</span>
       </div>
