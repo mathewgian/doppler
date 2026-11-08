@@ -15,6 +15,7 @@
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
 # Location logic & pages
+- [x] Change uploaded recording Doppler search from 30–1,000 Hz to 5–800 Hz; verified frequency boundaries, five-second upload analysis, aircraft detection and matching with 18 passing tests. Demo unchanged.
 - [x] Add and test a bounded, retry-safe CSV batch importer; 11 Python tests passed and July's 223,811 rows prepared in 224 batches of at most 1,000 rows. Managed execution requires an approved write adapter that is not available; no July data loaded or completed coverage recorded.
 - [ ] Load July 19, 2025 Metro Vancouver archive into the database; full extraction validated 223,811 rows / 458 identifiers with five-second request spacing, but loading is blocked by no supported bulk managed-data write path for the local CSV. Database count is zero; no completed coverage recorded. Temporary extraction: /tmp/adsblol-july-2025.
 - [x] Add terrain-aware delayed flight-geometry scoring, locked time/frequency sweeps, 100/50 m refinement, 30-minute recordings and bounded ±12-hour searches; 21 tests passed, browser history/no-match/noise checks passed. Synthetic historical benchmark produced an incorrect low-strength candidate, so accuracy remains unverified; demo unchanged.

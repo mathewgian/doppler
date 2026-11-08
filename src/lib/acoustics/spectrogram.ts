@@ -31,7 +31,7 @@ export interface Spectrogram {
 }
 
 export function computeSpectrogram(x: Float32Array, rate: number, opts: { n?: number; hop?: number; fLow?: number; fHigh?: number } = {}): Spectrogram {
-  const n = opts.n ?? 2048, hop = opts.hop ?? 1024, fLow = opts.fLow ?? 30, fHigh = opts.fHigh ?? 1000;
+  const n = opts.n ?? 2048, hop = opts.hop ?? 1024, fLow = opts.fLow ?? 5, fHigh = opts.fHigh ?? 800;
   const df = rate / n;
   const b0 = Math.ceil(fLow / df), b1 = Math.min(n / 2 - 1, Math.floor(fHigh / df));
   const bins = b1 - b0 + 1;
