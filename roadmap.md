@@ -15,6 +15,7 @@
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
 # Location logic & pages
+- [ ] Load July 19, 2025 Metro Vancouver archive into the database; full extraction validated 223,811 rows / 458 identifiers with five-second request spacing, but loading is blocked by no supported bulk managed-data write path for the local CSV. Database count is zero; no completed coverage recorded. Temporary extraction: /tmp/adsblol-july-2025.
 - [x] Add terrain-aware delayed flight-geometry scoring, locked time/frequency sweeps, 100/50 m refinement, 30-minute recordings and bounded ±12-hour searches; 21 tests passed, browser history/no-match/noise checks passed. Synthetic historical benchmark produced an incorrect low-strength candidate, so accuracy remains unverified; demo unchanged.
 - [x] Connect local audio analysis to completed historical archive queries; verified real history response and candidate map using synthetic audio, missing coverage, noise rejection and mobile. Cinematic simulation unchanged.
 - [x] Extract November 6 full archive, correct gzip-with-.json format bug, deduplicate and load 130,659 positions from 344 aircraft; verified database count and completed-day lookup.
