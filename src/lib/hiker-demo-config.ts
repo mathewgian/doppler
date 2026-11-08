@@ -40,5 +40,5 @@ export function demoSample(progress: number) {
 
 export function demoRadius(progress: number) {
   const p = Math.max(0, Math.min(1, progress));
-  return HIKER_DEMO.search.finalRadiusM + (HIKER_DEMO.search.initialRadiusM - HIKER_DEMO.search.finalRadiusM) * (1 - p) ** 2;
+  return HIKER_DEMO.search.initialRadiusM * (HIKER_DEMO.search.finalRadiusM / HIKER_DEMO.search.initialRadiusM) ** p;
 }

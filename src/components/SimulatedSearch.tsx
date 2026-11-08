@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import LocatorMap from "./LocatorMap";
 import { demoRadius, demoSample, HIKER_DEMO } from "@/lib/hiker-demo-config";
 
 export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: { progress: number; cameraZoom: number; cameraPaused: boolean }) {
   const layers = useRef<{ map: L.Map; plane: L.Marker; region: L.Circle; hiker: L.Marker; trail: L.Polyline }>();
+  const [searchRadius, setSearchRadius] = useState<number>(HIKER_DEMO.search.initialRadiusM);
   const sample = demoSample(progress);
   const cameraMoving = cameraZoom > HIKER_DEMO.mapCamera.initialZoom && cameraZoom < HIKER_DEMO.mapCamera.finalZoom;
   useEffect(() => {
@@ -29,7 +30,6 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
     const current = layers.current;
     if (!current) return;
     current.plane.setLatLng([sample.lat, sample.lng]);
-    current.region.setRadius(demoRadius(progress));
     current.hiker.setOpacity(progress >= 1 ? 1 : 0);
     const passed = HIKER_DEMO.flight.filter(p => Date.parse(p.timestamp) <= sample.timestamp).map(p => [p.lat, p.lng] as L.LatLngTuple);
     current.trail.setLatLngs([...passed, [sample.lat, sample.lng]]);
@@ -47,9 +47,24 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
       L.polyline(route, { color: signal, opacity: .5, weight: 3, dashArray: "8 8", className: "fictional-flight-line" }).addTo(map);
       const trail = L.polyline([], { color: signal, weight: 5, className: "demo-flight-trail" }).addTo(map);
       const plane = L.marker([sample.lat, sample.lng], { zIndexOffset: 1000, icon: L.divIcon({ className: "demo-plane", html: '<span aria-label="Simulated aircraft">✈</span>', iconSize: [48, 48], iconAnchor: [24, 24] }) }).addTo(map);
-      const region = L.circle([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { radius: demoRadius(progress), color: signal, weight: 3, fillOpacity: .18, className: "demo-search-region" }).addTo(map);
+      const region = L.circle([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { radius: HIKER_DEMO.search.initialRadiusM, opacity: 0, fillOpacity: 0 }).addTo(map);
+      // A screen overlay avoids Leaflet's cached SVG scale during native flyTo.
+      const circle = L.DomUtil.create("div", "demo-search-region", map.getContainer());
+      circle.setAttribute("aria-label", "Simulated search area");
+      const syncRadius = () => {
+        const camera = HIKER_DEMO.mapCamera;
+        const radius = demoRadius((map.getZoom() - camera.initialZoom) / (camera.finalZoom - camera.initialZoom));
+        region.setRadius(radius);
+        const metresPerPixel = 40075016.686 * Math.cos(HIKER_DEMO.location.lat * Math.PI / 180) / (256 * 2 ** map.getZoom());
+        const diameter = 2 * radius / metresPerPixel;
+        circle.style.width = `${diameter}px`;
+        circle.style.height = `${diameter}px`;
+        setSearchRadius(radius);
+      };
+      map.on("move", syncRadius);
       const hiker = L.marker([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { opacity: progress >= 1 ? 1 : 0, icon: L.divIcon({ className: "location-marker", html: "<span></span>", iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(map);
       map.setView([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], cameraZoom, { animate: false });
+      syncRadius();
       layers.current = { map, plane, region, hiker, trail };
     }} />
     <div className="demo-search-readout" role="status">
@@ -59,7 +74,7 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
       {progress >= 1 && <><p className="demo-exact-coordinates">{HIKER_DEMO.location.lat}, {HIKER_DEMO.location.lng}</p><p>Story coordinates supplied for this demo, not inferred from the voice message.</p></>}
       <>
         <svg viewBox="0 0 300 72" role="img" aria-label="Scripted Doppler frequency curve"><path className="diagram-guide" d="M0 65H300" /><polyline className="diagram-line" points={hz.map((h, i) => `${i * 75},${65 - (h - 130)}`).join(" ")} /><circle className="demo-curve-point" cx={progress * 300} cy={65 - (pitch - 130)} r={4} /></svg>
-        <dl><div><dt>Scripted frequency</dt><dd>{pitch.toFixed(1)} Hz</dd></div><div><dt>Search radius</dt><dd>{Math.round(demoRadius(progress))} m</dd></div><div><dt>Fictional altitude</dt><dd>{Math.round(sample.altitudeM)} m</dd></div><div><dt>Fictional velocity</dt><dd>{Math.round(sample.velocityMps)} m/s</dd></div></dl>
+        <dl><div><dt>Scripted frequency</dt><dd>{pitch.toFixed(1)} Hz</dd></div><div><dt>Search radius</dt><dd>{Math.round(searchRadius)} m</dd></div><div><dt>Fictional altitude</dt><dd>{Math.round(sample.altitudeM)} m</dd></div><div><dt>Fictional velocity</dt><dd>{Math.round(sample.velocityMps)} m/s</dd></div></dl>
         <p className="demo-flight-time">Flight sample · {new Date(sample.timestamp).toISOString().slice(11, 19)} UTC</p>
       </>
     </div>

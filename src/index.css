@@ -224,6 +224,7 @@ All colors MUST be HSL.
 .sim-search { position: absolute; inset: 0; }.demo-search-map { position: absolute; inset: 0; color: hsl(var(--foreground)); background: hsl(var(--background)); }
 .demo-search-map { right: 410px; }
 .demo-search-map .leaflet-tile-pane { filter: grayscale(1) brightness(.5); }
+.demo-search-region { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border: 3px solid hsl(var(--signal)); background: hsl(var(--signal) / .18); border-radius: 50%; z-index: 450; pointer-events: none; box-sizing: border-box; }
 .demo-plane { font-size: 36px; color: hsl(var(--primary-foreground)); text-align: center; line-height: 48px; background: hsl(var(--signal)); border: 2px solid hsl(var(--foreground)); border-radius: 50%; }
 .demo-search-readout { position: absolute; z-index: 600; right: 24px; top: 110px; width: 362px; background: hsl(var(--card) / .95); border: 1px solid hsl(var(--border)); border-radius: 8px; padding: 22px; }
 .demo-search-readout h2 { font-size: 22px; margin: 14px 0 8px; }.demo-search-readout p { font-size: 12px; line-height: 1.7; color: hsl(var(--muted-foreground)); }

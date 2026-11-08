@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { demoMapZoom, demoProgress, demoRadius, demoSample, HIKER_DEMO } from "./hiker-demo-config";
 
 describe("configured fictional hiker demo", () => {
+  it("shrinks the projected circle throughout the six-level map zoom and ends at 25 metres", () => {
+    let previous = demoRadius(0);
+    for (let i = 1; i <= 20; i++) {
+      const p = i / 20;
+      const projected = demoRadius(p) * 2 ** (6 * p);
+      expect(projected).toBeLessThan(previous);
+      previous = projected;
+    }
+    expect(demoRadius(0)).toBe(2400);
+    expect(demoRadius(1)).toBe(25);
+  });
   it("continues zooming across the Earth-to-search handoff to the final coordinates", () => {
     const handoff = HIKER_DEMO.timing.zoomMs;
     expect(demoMapZoom(handoff - 1)).toBeLessThan(demoMapZoom(handoff));
