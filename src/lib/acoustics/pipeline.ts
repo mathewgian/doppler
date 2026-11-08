@@ -72,12 +72,12 @@ export async function analyzeRecording(blob: Blob, opts: { startUnix: number; cl
   const tick = () => new Promise(r => setTimeout(r, 30));
   opts.onStage("decode"); await tick();
   const { samples, rate, duration } = await decodeToMono(blob);
-  if (duration < 12) throw new AnalysisError("The recording needs to be at least 12 seconds long to capture a flyover.");
+  if (duration < 5) throw new AnalysisError("The recording needs to be at least 5 seconds long.");
   if (duration > 600) throw new AnalysisError("Please trim the recording to 10 minutes or less around the aircraft sound.");
 
   opts.onStage("listen"); await tick();
   const spectrogram = computeSpectrogram(samples, rate);
-  const events = detectEvents(spectrogram).filter(event => event.coversCpa);
+  const events = detectEvents(spectrogram, { minDuration: 4 }).filter(event => event.coversCpa);
   const base = { duration, startUnix: opts.startUnix, clockSigma: opts.clockSigma, spectrogram, events };
   if (!events.length) return { ...base, status: "no-events", flights: 0 };
 

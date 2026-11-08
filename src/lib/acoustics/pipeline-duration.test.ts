@@ -1,0 +1,26 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+vi.mock("@/integrations/supabase/client", () => ({ supabase: { functions: { invoke: vi.fn() } } }));
+import { analyzeRecording } from "./pipeline";
+
+function recording(duration: number) {
+  vi.stubGlobal("window", { OfflineAudioContext: class {
+    async decodeAudioData() {
+      return { duration, length: Math.round(duration * 8000), sampleRate: 8000,
+        numberOfChannels: 1, getChannelData: () => new Float32Array(Math.round(duration * 8000)) };
+    }
+  } });
+  return new Blob([new Uint8Array(8)], { type: "audio/mpeg" });
+}
+const options = { startUnix: 1700000000, clockSigma: 5, onStage: vi.fn() };
+afterEach(() => vi.unstubAllGlobals());
+describe("five-second recording minimum", () => {
+  it("accepts exactly five seconds and processes it without inventing detections", async () => {
+    const report = await analyzeRecording(recording(5), options);
+    expect(report.duration).toBe(5);
+    expect(report.status).toBe("no-events");
+    expect(report.spectrogram.frames).toBeGreaterThan(8);
+  });
+  it("rejects recordings shorter than five seconds", async () => {
+    await expect(analyzeRecording(recording(4.99), options)).rejects.toThrow("at least 5 seconds");
+  });
+});
