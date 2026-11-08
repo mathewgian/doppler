@@ -15,13 +15,14 @@
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
 # Location logic & pages
+- [x] Improve duration-aware short-clip and overlapping/broadened aircraft curve detection; 29 acoustic tests passed and the real airshow upload completed without runtime errors. Its 7.97-second audio still yielded no usable curve or acoustic location; metadata was not used. Cinematic demo unchanged.
 - [x] Change uploaded recording Doppler search from 30–1,000 Hz to 5–800 Hz; verified frequency boundaries, five-second upload analysis, aircraft detection and matching with 18 passing tests. Demo unchanged.
 - [x] Add and test a bounded, retry-safe CSV batch importer; 11 Python tests passed and July's 223,811 rows prepared in 224 batches of at most 1,000 rows. Managed execution requires an approved write adapter that is not available; no July data loaded or completed coverage recorded.
 - [x] Load July 19, 2025 Metro Vancouver archive in 224 conflict-safe batches; verified 223,811 positions / 458 identifiers, valid bounds/provenance and full-day timestamp span through managed reads. Guarded completed-day record confirmed; app lookup returned 266 positions / 10 usable tracks for 19:00–19:02 UTC. Demo unchanged.
 - [x] Add terrain-aware delayed flight-geometry scoring, locked time/frequency sweeps, 100/50 m refinement, 30-minute recordings and bounded ±12-hour searches; 21 tests passed, browser history/no-match/noise checks passed. Synthetic historical benchmark produced an incorrect low-strength candidate, so accuracy remains unverified; demo unchanged.
 - [x] Connect local audio analysis to completed historical archive queries; verified real history response and candidate map using synthetic audio, missing coverage, noise rejection and mobile. Cinematic simulation unchanged.
 - [x] Extract November 6 full archive, correct gzip-with-.json format bug, deduplicate and load 130,659 positions from 344 aircraft; verified database count and completed-day lookup.
-- [ ] Validate accuracy against a genuine timestamped aircraft recording with known recording location; blocked by no such recording supplied. Synthetic audio with real history proves connectivity only, not localization accuracy.
+- [ ] Validate location accuracy against a genuine timestamped recording with independently known location; the supplied 7.97-second airshow clip yielded no usable curve, so it cannot validate localization. A longer recording with coherent aircraft bands is needed; synthetic tests prove connectivity only.
 - [ ] Finish other 29 days of ADSB.lol past-month extraction and loading; November 6 imported, remaining ~109 GB needs a sustained batch run. Five-second-spaced request rule preserved.
 - [ ] Verify OpenSky OAuth flight lookup: credentials saved and function deployed, but the live sign-in request timed out. Blocked by OpenSky connectivity; keep audio analysis separate.
 - [x] Replace OpenSky dependency in recording analysis with completed ADSB.lol historical tracks; results explicitly experimental, single-aircraft candidates ambiguous, no fallback simulation.

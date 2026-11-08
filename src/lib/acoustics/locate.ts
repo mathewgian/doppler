@@ -2,7 +2,7 @@ import { REGION, SPEED_OF_SOUND as C, makeProjection, type DopplerEvent, type Fl
 import { flightCurve, scoreCurve } from "./flight-curve";
 import type { Spectrogram } from "./spectrogram";
 
-export interface ObservedEvent { id: number; tAbs: number; speed: number; slant: number; sigmaLogD: number; sigmaLogV: number; f0?: number; track?: { t: number; f: number }[] }
+export interface ObservedEvent { id: number; tAbs: number; speed: number; slant: number; sigmaLogD: number; sigmaLogV: number; f0?: number; uncertain?: boolean; track?: { t: number; f: number }[] }
 
 export interface LocateOptions {
   region?: Region;
@@ -37,7 +37,7 @@ const AUDIBLE_M = 2500;
 const TEMPER = 2;
 
 export function toObserved(events: DopplerEvent[], clipStartUnix: number): ObservedEvent[] {
-  return events.map(e => ({ id: e.id, tAbs: clipStartUnix + e.tCpa, speed: e.speed, slant: e.slant, sigmaLogD: e.sigmaLogD, sigmaLogV: e.sigmaLogV, f0: e.f0, track: e.track }));
+  return events.map(e => ({ id: e.id, tAbs: clipStartUnix + e.tCpa, speed: e.speed, slant: e.slant, sigmaLogD: e.sigmaLogD, sigmaLogV: e.sigmaLogV, f0: e.f0, uncertain: e.uncertain, track: e.track }));
 }
 
 interface Prepared { icao24: string; callsign: string; t: Float64Array; x: Float64Array; y: Float64Array; z: Float64Array; x0: number; x1: number; y0: number; y1: number }
@@ -242,8 +242,9 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
   if (finalTop && finalTop.matched > 0) {
     confidence = "low";
     const distinctAircraft = new Set(finalTop.matches.map(match => match.icao24)).size;
-    if (finalTop.mass >= 0.35 && distinctAircraft >= 2 && opts.clockSigma <= 120) confidence = "medium";
-    if (finalTop.mass >= 0.6 && finalTop.matched === nE && distinctAircraft >= 2 && opts.clockSigma <= 120) confidence = "high";
+    const uncertain = events.some(e => e.uncertain);
+    if (!uncertain && finalTop.mass >= 0.35 && distinctAircraft >= 2 && opts.clockSigma <= 120) confidence = "medium";
+    if (!uncertain && finalTop.mass >= 0.6 && finalTop.matched === nE && distinctAircraft >= 2 && opts.clockSigma <= 120) confidence = "high";
   }
   void minIdx;
   return { candidates: finalTop && finalTop.matched > 0 ? candidates : [], heat: finalTop && finalTop.matched > 0 ? heat : [], confidence, aircraftConsidered: air.length, cells: nx * ny };

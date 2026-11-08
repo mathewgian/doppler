@@ -2,15 +2,39 @@ import type { DopplerEvent } from "./geo";
 import { fitDoppler } from "./doppler";
 import type { Spectrogram } from "./spectrogram";
 
-export interface DetectOptions { threshold?: number; maxJumpBins?: number; minDuration?: number; maxEvents?: number }
+export interface DetectOptions { threshold?: number; maxJumpBins?: number; minDuration?: number; maxEvents?: number; mode?: "tonal" | "broadened" }
+
+/** Short clips have fewer frames, not weaker requirements for coherent falling pitch. */
+export function detectionRules(spec: Spectrogram) {
+  const duration = (spec.frames * spec.hop + spec.n - spec.hop) / spec.rate;
+  const short = duration < 12 - spec.hop / spec.rate;
+  return { short, threshold: short ? 2.5 : 3, minDuration: short ? Math.max(2.5, duration * 0.45) : 6,
+    minScore: Math.max(12, 30 * Math.min(1, duration / 12)), cpaMargin: short ? 0.05 : 0.15 };
+}
+
+/** Local frequency pooling follows broadened bands, not the overall loudness envelope. */
+export function broadenSpectrogram(spec: Spectrogram): Spectrogram {
+  const sal = new Float32Array(spec.sal.length);
+  for (let t = 0; t < spec.frames; t++) for (let b = 0; b < spec.bins; b++) {
+    let sum = 0, weight = 0;
+    for (let j = -2; j <= 2; j++) {
+      if (b + j < 0 || b + j >= spec.bins) continue;
+      const w = 3 - Math.abs(j);
+      sum += w * spec.sal[t * spec.bins + b + j]; weight += w;
+    }
+    sal[t * spec.bins + b] = sum / weight;
+  }
+  return { ...spec, sal };
+}
 
 /**
  * Finds gliding tonal ridges (engine tones sliding in pitch) with a Viterbi ridge tracer,
  * then fits each one with the flyover Doppler model.
  */
 export function detectEvents(spec: Spectrogram, opts: DetectOptions = {}): DopplerEvent[] {
-  const thr = opts.threshold ?? 3, J = opts.maxJumpBins ?? 5, lambda = 0.1;
-  const minDur = opts.minDuration ?? 6, maxEvents = opts.maxEvents ?? 4;
+  const rules = detectionRules(spec);
+  const thr = opts.threshold ?? rules.threshold, J = opts.maxJumpBins ?? 5, lambda = 0.1;
+  const minDur = opts.minDuration ?? rules.minDuration, maxEvents = opts.maxEvents ?? (rules.short ? 6 : 4);
   const { frames: T, bins: B, sal, db } = spec;
   const dt = spec.hop / spec.rate;
   const blocked = new Uint8Array(T * B);
@@ -55,8 +79,9 @@ export function detectEvents(spec: Spectrogram, opts: DetectOptions = {}): Doppl
     path.reverse();
     const pStart = bt - path.length + 1;
     // always block this ridge so the search moves on
-    for (let k = 0; k < path.length; k++) for (let dd = -5; dd <= 5; dd++) { const bn = path[k] + dd; if (bn >= 0 && bn < B) blocked[(pStart + k) * B + bn] = 1; }
-    if (bestScore < 30) break;
+    const blockWidth = opts.mode === "broadened" ? 4 : rules.short ? 2 : 5;
+    for (let k = 0; k < path.length; k++) for (let dd = -blockWidth; dd <= blockWidth; dd++) { const bn = path[k] + dd; if (bn >= 0 && bn < B) blocked[(pStart + k) * B + bn] = 1; }
+    if (bestScore < rules.minScore) break;
     // the tracer may bridge two different tones through noise: split at gaps and keep the strongest piece
     let pieceA = 0, pieceB = -1, bestSum = -Infinity, curA = 0, gap = 0, sumCur = 0;
     for (let k = 0; k <= path.length; k++) {
@@ -70,13 +95,13 @@ export function detectEvents(spec: Spectrogram, opts: DetectOptions = {}): Doppl
     const dur = seg.length * dt;
     let sum = 0; for (let k = 0; k < seg.length; k++) sum += Math.max(sal[(t0 + k) * B + seg[k]], 0);
     const meanSal = sum / seg.length;
-    if (dur < minDur || meanSal < thr + 1) continue;
+    if (dur < minDur || meanSal < thr + (rules.short ? 0.75 : 1)) continue;
 
     const tt: number[] = [], ff: number[] = [];
     for (let k = 0; k < seg.length; k++) {
       const fr = t0 + k, bn = seg[k];
       let off = 0;
-      if (bn > 0 && bn < B - 1) {
+      if (opts.mode !== "broadened" && bn > 0 && bn < B - 1) {
         const a = db[fr * B + bn - 1], m = db[fr * B + bn], c = db[fr * B + bn + 1];
         const den = a - 2 * m + c; if (den < 0) off = Math.max(-0.5, Math.min(0.5, (0.5 * (a - c)) / den));
       }
@@ -89,10 +114,12 @@ export function detectEvents(spec: Spectrogram, opts: DetectOptions = {}): Doppl
     const tStart = tt[0], tEnd = tt[tt.length - 1];
     if (fit.rms > 0.04) continue;
     const span = tEnd - tStart;
-    const coversCpa = fit.tCpa > tStart + 0.15 * span && fit.tCpa < tEnd - 0.15 * span && !fit.atLimit;
+    const coversCpa = fit.tCpa > tStart + rules.cpaMargin * span && fit.tCpa < tEnd - rules.cpaMargin * span && !fit.atLimit;
+    const uncertain = rules.short || opts.mode === "broadened";
     const ev: DopplerEvent = {
       id: 0, tCpa: fit.tCpa, f0: fit.f0, speed: fit.speed, slant: fit.slant, rms: fit.rms, start: tStart, end: tEnd, coversCpa, snr: meanSal,
-      sigmaLogD: coversCpa ? 0.2 : 0.45, sigmaLogV: coversCpa ? 0.1 : 0.22, track: tt.map((x, i) => ({ t: x, f: ff[i] })),
+      sigmaLogD: coversCpa && !uncertain ? 0.2 : 0.45, sigmaLogV: coversCpa && !uncertain ? 0.1 : 0.22,
+      uncertain, spectralMode: opts.mode ?? "tonal", track: tt.map((x, i) => ({ t: x, f: ff[i] })),
     };
     // harmonics of one engine share timing and geometry: keep only the cleanest
     const dup = events.findIndex(e => Math.abs(e.tCpa - ev.tCpa) < 4 && Math.abs(Math.log(e.speed / ev.speed)) < 0.12 && Math.abs(Math.log(e.slant / ev.slant)) < 0.35);

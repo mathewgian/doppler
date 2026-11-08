@@ -20,6 +20,9 @@ export interface DopplerEvent {
   snr: number;
   sigmaLogD: number;
   sigmaLogV: number;
+  /** Short or broadened evidence cannot establish strong location confidence. */
+  uncertain?: boolean;
+  spectralMode?: "tonal" | "broadened";
   track: { t: number; f: number }[];
 }
 

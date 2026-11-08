@@ -97,4 +97,11 @@ describe("acoustic geolocation", () => {
     expect(res.candidates.length).toBeGreaterThan(0);
     expect(res.confidence).toBe("low");
   });
+  it("caps short or broadened evidence at low confidence even with two aircraft", async () => {
+    const observed = toObserved(events.map(e => ({ ...e, uncertain: true })), T0);
+    expect(observed.every(e => e.uncertain)).toBe(true);
+    const res = await locate(observed, flights(), { clockSigma: 5, clipStart: T0, clipEnd: T0 + DUR });
+    expect(res.candidates[0].matched).toBe(2);
+    expect(res.confidence).toBe("low");
+  });
 });

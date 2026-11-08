@@ -1,4 +1,5 @@
 # Project rules
+- Detect short recordings with duration-aware coherent ridge criteria and bounded local-frequency pooling for broadened bands; reject incomplete closest approaches and cap short/broadened location evidence at low confidence to avoid loudness-based false triangulation.
 - Use a bounded local terrain grid and delayed piecewise 3D aircraft curves for coarse-to-fine recording analysis; lock event clock shifts and bound archive requests and ridge-tracer memory to keep broad searches feasible without changing the cinematic simulation.
 - User-triggered cinematic demos run their full configured timeline regardless of passive motion preferences, with a Pause/Resume control; preload Earth and map during audio so loading cannot consume the zoom.
 - Process multi-gigabyte ADSB.lol historical archives with the offline streaming importer and service-only aircraft_archive_positions table, not browser or edge polling, to keep archive extraction bounded and separate from simulated audio results.
