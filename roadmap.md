@@ -1,4 +1,5 @@
 # Audio locator
+- [x] Keep flight strokes and aircraft fixed-size during zoom; verified constant stroke width, 48px aircraft, visible labeled edge indicator, circle shrink, pause and mobile. Geographic route and globe unchanged.
 - [x] Import September 1, 2026 Metro Vancouver archive with five-second request spacing; verified 196,668 rows across 645 source identifiers, completed coverage and historical analysis lookup.
 - [x] Fix globe-to-map blackout and tile jitter with one tile-preserving native map flight; verified loaded tiles during normal-motion fade/zoom, pause/resume, final arrival and mobile. Globe rotation/zoom unchanged.
 - [x] Continue cinematic map zoom through the unchanged Earth animation into final hiker coordinates; verified increasing zoom across handoff, pause/resume, final zoom 17, mobile and no runtime errors.

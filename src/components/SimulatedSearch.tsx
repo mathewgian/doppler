@@ -4,7 +4,9 @@ import LocatorMap from "./LocatorMap";
 import { demoRadius, demoSample, HIKER_DEMO } from "@/lib/hiker-demo-config";
 
 export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: { progress: number; cameraZoom: number; cameraPaused: boolean }) {
-  const layers = useRef<{ map: L.Map; plane: L.Marker; region: L.Circle; hiker: L.Marker; trail: L.Polyline }>();
+  const layers = useRef<{ map: L.Map; region: L.Circle; hiker: L.Marker; updateFlight: () => void }>();
+  const flightProgress = useRef(progress);
+  flightProgress.current = progress;
   const [searchRadius, setSearchRadius] = useState<number>(HIKER_DEMO.search.initialRadiusM);
   const sample = demoSample(progress);
   const cameraMoving = cameraZoom > HIKER_DEMO.mapCamera.initialZoom && cameraZoom < HIKER_DEMO.mapCamera.finalZoom;
@@ -29,10 +31,8 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
   useEffect(() => {
     const current = layers.current;
     if (!current) return;
-    current.plane.setLatLng([sample.lat, sample.lng]);
     current.hiker.setOpacity(progress >= 1 ? 1 : 0);
-    const passed = HIKER_DEMO.flight.filter(p => Date.parse(p.timestamp) <= sample.timestamp).map(p => [p.lat, p.lng] as L.LatLngTuple);
-    current.trail.setLatLngs([...passed, [sample.lat, sample.lng]]);
+    current.updateFlight();
   }, [progress, sample.lat, sample.lng]);
   const hz = HIKER_DEMO.dopplerHz;
   const index = Math.min(hz.length - 2, Math.floor(progress * (hz.length - 1)));
@@ -41,12 +41,47 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
   return <div className="sim-search" data-camera-zoom={cameraZoom.toFixed(4)}>
     <LocatorMap location={HIKER_DEMO.location} showMarker={false} zoom={HIKER_DEMO.mapCamera.initialZoom} className="demo-search-map" onReady={map => {
       map.zoomControl.remove();
-      const color = getComputedStyle(map.getContainer()).getPropertyValue("--signal").trim();
-      const signal = `hsl(${color})`;
       const route = HIKER_DEMO.flight.map(p => [p.lat, p.lng] as L.LatLngTuple);
-      L.polyline(route, { color: signal, opacity: .5, weight: 3, dashArray: "8 8", className: "fictional-flight-line" }).addTo(map);
-      const trail = L.polyline([], { color: signal, weight: 5, className: "demo-flight-trail" }).addTo(map);
-      const plane = L.marker([sample.lat, sample.lng], { zIndexOffset: 1000, icon: L.divIcon({ className: "demo-plane", html: '<span aria-label="Simulated aircraft">✈</span>', iconSize: [48, 48], iconAnchor: [24, 24] }) }).addTo(map);
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "demo-flight-overlay");
+      const makePath = (className: string) => {
+        const path = document.createElementNS(svg.namespaceURI, "polyline");
+        path.setAttribute("class", className);
+        path.setAttribute("vector-effect", "non-scaling-stroke");
+        svg.appendChild(path);
+        return path;
+      };
+      const line = makePath("fictional-flight-line");
+      const trail = makePath("demo-flight-trail");
+      map.getContainer().appendChild(svg);
+      const plane = L.DomUtil.create("div", "demo-plane demo-plane-overlay", map.getContainer());
+      plane.textContent = "✈";
+      const edgeLabel = L.DomUtil.create("span", "demo-aircraft-edge-label", map.getContainer());
+      edgeLabel.textContent = "Aircraft outside close-up";
+      const updateFlight = () => {
+        const current = demoSample(flightProgress.current);
+        const project = (lat: number, lng: number) => map.latLngToContainerPoint([lat, lng]);
+        const points = (coords: L.LatLngTuple[]) => coords.map(([lat, lng]) => {
+          const point = project(lat, lng);
+          return `${point.x},${point.y}`;
+        }).join(" ");
+        line.setAttribute("points", points(route));
+        const passed = HIKER_DEMO.flight.filter(p => Date.parse(p.timestamp) <= current.timestamp).map(p => [p.lat, p.lng] as L.LatLngTuple);
+        trail.setAttribute("points", points([...passed, [current.lat, current.lng]]));
+        const point = project(current.lat, current.lng);
+        const size = map.getSize();
+        const x = Math.max(32, Math.min(size.x - 32, point.x));
+        const y = Math.max(112, Math.min(size.y - 55, point.y));
+        const outside = x !== point.x || y !== point.y;
+        plane.style.left = `${x}px`;
+        plane.style.top = `${y}px`;
+        plane.title = outside ? "Aircraft outside close-up; indicator points toward its position" : "Simulated aircraft";
+        plane.setAttribute("aria-label", plane.title);
+        edgeLabel.hidden = !outside;
+        edgeLabel.style.left = `${Math.max(8, Math.min(size.x - 185, x - 80))}px`;
+        edgeLabel.style.top = `${y + 28}px`;
+      };
+      map.on("move resize", updateFlight);
       const region = L.circle([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { radius: HIKER_DEMO.search.initialRadiusM, opacity: 0, fillOpacity: 0 }).addTo(map);
       // A screen overlay avoids Leaflet's cached SVG scale during native flyTo.
       const circle = L.DomUtil.create("div", "demo-search-region", map.getContainer());
@@ -65,7 +100,8 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
       const hiker = L.marker([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { opacity: progress >= 1 ? 1 : 0, icon: L.divIcon({ className: "location-marker", html: "<span></span>", iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(map);
       map.setView([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], cameraZoom, { animate: false });
       syncRadius();
-      layers.current = { map, plane, region, hiker, trail };
+      layers.current = { map, region, hiker, updateFlight };
+      updateFlight();
     }} />
     <div className="demo-search-readout" role="status">
       <span className="demo-label">CONFIGURED SIMULATION · NOT AUDIO DETECTION</span>
