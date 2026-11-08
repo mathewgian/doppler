@@ -23,4 +23,12 @@ describe("five-second recording minimum", () => {
   it("rejects recordings shorter than five seconds", async () => {
     await expect(analyzeRecording(recording(4.99), options)).rejects.toThrow("at least 5 seconds");
   });
+  it("accepts a recording spanning the example's 920-second separation", async () => {
+    const report = await analyzeRecording(recording(960), options);
+    expect(report.duration).toBe(960);
+    expect(report.events).toHaveLength(0);
+  });
+  it("rejects recordings beyond the bounded 30-minute search", async () => {
+    await expect(analyzeRecording(recording(1801), options)).rejects.toThrow("30 minutes");
+  });
 });

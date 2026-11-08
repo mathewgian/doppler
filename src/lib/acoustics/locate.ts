@@ -1,6 +1,8 @@
 import { REGION, SPEED_OF_SOUND as C, makeProjection, type DopplerEvent, type FlightTrack, type Region } from "./geo";
+import { flightCurve, scoreCurve } from "./flight-curve";
+import type { Spectrogram } from "./spectrogram";
 
-export interface ObservedEvent { id: number; tAbs: number; speed: number; slant: number; sigmaLogD: number; sigmaLogV: number }
+export interface ObservedEvent { id: number; tAbs: number; speed: number; slant: number; sigmaLogD: number; sigmaLogV: number; f0?: number; track?: { t: number; f: number }[] }
 
 export interface LocateOptions {
   region?: Region;
@@ -10,10 +12,12 @@ export interface LocateOptions {
   clipStart: number;
   clipEnd: number;
   groundElev?: number;
+  elevationAt?: (lat: number, lon: number) => number;
+  spectrogram?: Spectrogram;
   onProgress?: (fraction: number) => void;
 }
 
-export interface EventMatch { eventId: number; icao24: string; callsign: string; slant: number; speed: number; passedAt: number }
+export interface EventMatch { eventId: number; icao24: string; callsign: string; slant: number; speed: number; passedAt: number; curveCost?: number; frequency?: number }
 export interface Candidate {
   lat: number; lon: number; mass: number; cost: number; radiusM: number;
   matched: number; clockOffset: number; matches: EventMatch[];
@@ -33,7 +37,7 @@ const AUDIBLE_M = 2500;
 const TEMPER = 2;
 
 export function toObserved(events: DopplerEvent[], clipStartUnix: number): ObservedEvent[] {
-  return events.map(e => ({ id: e.id, tAbs: clipStartUnix + e.tCpa, speed: e.speed, slant: e.slant, sigmaLogD: e.sigmaLogD, sigmaLogV: e.sigmaLogV }));
+  return events.map(e => ({ id: e.id, tAbs: clipStartUnix + e.tCpa, speed: e.speed, slant: e.slant, sigmaLogD: e.sigmaLogD, sigmaLogV: e.sigmaLogV, f0: e.f0, track: e.track }));
 }
 
 interface Prepared { icao24: string; callsign: string; t: Float64Array; x: Float64Array; y: Float64Array; z: Float64Array; x0: number; x1: number; y0: number; y1: number }
@@ -61,7 +65,7 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
 
   const step = Math.max(1, Math.min(5, Math.round(opts.clockSigma / 20)));
   const deltas: number[] = [];
-  for (let d = -opts.clockSigma; d <= opts.clockSigma + 1e-9; d += step) deltas.push(d);
+  if (opts.clockSigma <= 300) for (let d = -opts.clockSigma; d <= opts.clockSigma + 1e-9; d += step) deltas.push(d);
 
   const aR = new Float64Array(air.length), aT = new Float64Array(air.length), aS = new Float64Array(air.length), aOk = new Uint8Array(air.length);
   const mCount = new Int32Array(nE);
@@ -71,6 +75,8 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
 
   /** Evaluate one listener position. Returns cost and best clock offset. */
   const evalCell = (px: number, py: number) => {
+    const ll = proj.toLatLon(px, py);
+    const elevation = opts.elevationAt?.(ll.lat, ll.lon) ?? gnd;
     mCount.fill(0);
     for (let a = 0; a < air.length; a++) {
       aOk[a] = 0;
@@ -82,7 +88,8 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
         const dt = A.t[i + 1] - A.t[i];
         if (dt > 30 || dt <= 0) continue; // never fabricate a flight across archive gaps
         const dx = A.x[i + 1] - A.x[i], dy = A.y[i + 1] - A.y[i], dz = A.z[i + 1] - A.z[i];
-        const rx = A.x[i] - px, ry = A.y[i] - py, rz = A.z[i];
+        const rx = A.x[i] - px, ry = A.y[i] - py, rz = A.z[i] + gnd - elevation;
+        if (rz <= 0) continue;
         const len2 = dx * dx + dy * dy + dz * dz;
         if (len2 < 1e-6 || Math.sqrt(len2) / dt > 340) continue;
         let s = -(rx * dx + ry * dy + rz * dz) / len2;
@@ -109,7 +116,8 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
     }
     let bestCost = nE * MISS, bestDelta = 0;
     let any = false; for (let k = 0; k < nE; k++) if (mCount[k]) any = true;
-    if (any) for (const delta of deltas) {
+    const cellDeltas = opts.clockSigma <= 300 ? deltas : [...new Set(events.flatMap((ev, k) => Array.from({ length: mCount[k] }, (_, m) => Math.round(mT[k][m] - ev.tAbs)).flatMap(d => [-4, 0, 4].map(j => d + j)).filter(d => Math.abs(d) <= opts.clockSigma)))];
+    if (any) for (const delta of cellDeltas) {
       let total = 0;
       for (let k = 0; k < nE; k++) {
         let b = MISS;
@@ -190,13 +198,53 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
   for (const i of order) { const ll = proj.toLatLon(sw.x + (i % nx) * grid, sw.y + Math.floor(i / nx) * grid); heat.push([ll.lat, ll.lon, w[i] / wMax]); }
 
   const top = candidates[0];
+  // Expensive full-trajectory scoring only on the strongest coarse neighborhoods.
+  if (top?.matched && events.every(event => event.track?.length && event.f0)) {
+    const refined: Candidate[] = [];
+    for (const candidate of candidates.filter(c => c.matched > 0).slice(0, 3)) {
+      const center = proj.toXY(candidate.lat, candidate.lon);
+      let winner: Candidate | undefined;
+      for (const spacing of [100, 50]) {
+        const anchor = winner ? proj.toXY(winner.lat, winner.lon) : center;
+        const extent = spacing === 100 ? 200 : 100;
+        for (let dy = -extent; dy <= extent; dy += spacing) for (let dx = -extent; dx <= extent; dx += spacing) {
+          const ll = proj.toLatLon(anchor.x + dx, anchor.y + dy);
+          if (ll.lat < region.latMin || ll.lat > region.latMax || ll.lon < region.lonMin || ll.lon > region.lonMax) continue;
+          const elevation = opts.elevationAt?.(ll.lat, ll.lon) ?? gnd;
+          const models = candidate.matches.map(match => ({ match, event: events.find(e => e.id === match.eventId), flight: flights.find(f => f.icao24 === match.icao24) })).filter(pair => pair.flight && pair.event);
+          const curves = models.map(pair => pair.flight ? flightCurve(pair.flight, ll.lat, ll.lon, elevation) : []);
+          for (let shift = -8; shift <= 8; shift += 2) {
+            const offset = candidate.clockOffset + shift;
+            if (Math.abs(offset) > opts.clockSigma) continue;
+            const geometry = evalCell(anchor.x + dx, anchor.y + dy);
+            let loss = (nE - models.length) * 12 + geometry.cost * 0.05;
+            const matches: EventMatch[] = [];
+            models.forEach((pair, i) => {
+              if (!pair.event?.track || !pair.event.f0) return;
+              const score = scoreCurve(curves[i], pair.event.track, pair.event.f0, opts.clipStart, offset, opts.spectrogram);
+              loss += score.cost;
+              if (score.coverage >= 0.8 && score.cost < 6) matches.push({ ...pair.match, curveCost: score.cost, frequency: score.frequency });
+            });
+            if (!winner || loss < winner.cost) winner = { ...candidate, ...ll, cost: loss, clockOffset: offset, radiusM: Math.max(spacing, candidate.radiusM), matches, matched: matches.length };
+          }
+        }
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      if (winner?.matched) refined.push(winner);
+    }
+    refined.sort((a, b) => a.cost - b.cost);
+    candidates.splice(0, candidates.length, ...refined);
+    // Do not present the old coarse heat as the refined score surface.
+    heat.splice(0, heat.length, ...refined.map(c => [c.lat, c.lon, Math.exp(-c.cost / 2)] as [number, number, number]));
+  }
+  const finalTop = candidates[0];
   let confidence: LocateResult["confidence"] = "none";
-  if (top && top.matched > 0) {
+  if (finalTop && finalTop.matched > 0) {
     confidence = "low";
-    const distinctAircraft = new Set(top.matches.map(match => match.icao24)).size;
-    if (top.mass >= 0.35 && distinctAircraft >= 2 && opts.clockSigma <= 120) confidence = "medium";
-    if (top.mass >= 0.6 && top.matched === nE && distinctAircraft >= 2) confidence = "high";
+    const distinctAircraft = new Set(finalTop.matches.map(match => match.icao24)).size;
+    if (finalTop.mass >= 0.35 && distinctAircraft >= 2 && opts.clockSigma <= 120) confidence = "medium";
+    if (finalTop.mass >= 0.6 && finalTop.matched === nE && distinctAircraft >= 2 && opts.clockSigma <= 120) confidence = "high";
   }
   void minIdx;
-  return { candidates: top && top.matched > 0 ? candidates : [], heat: top && top.matched > 0 ? heat : [], confidence, aircraftConsidered: air.length, cells: nx * ny };
+  return { candidates: finalTop && finalTop.matched > 0 ? candidates : [], heat: finalTop && finalTop.matched > 0 ? heat : [], confidence, aircraftConsidered: air.length, cells: nx * ny };
 }

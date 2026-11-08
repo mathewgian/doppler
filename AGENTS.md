@@ -1,4 +1,5 @@
 # Project rules
+- Use a bounded local terrain grid and delayed piecewise 3D aircraft curves for coarse-to-fine recording analysis; lock event clock shifts and bound archive requests and ridge-tracer memory to keep broad searches feasible without changing the cinematic simulation.
 - User-triggered cinematic demos run their full configured timeline regardless of passive motion preferences, with a Pause/Resume control; preload Earth and map during audio so loading cannot consume the zoom.
 - Process multi-gigabyte ADSB.lol historical archives with the offline streaming importer and service-only aircraft_archive_positions table, not browser or edge polling, to keep archive extraction bounded and separate from simulated audio results.
 - Render the hero Earth with Three.js in RotatingGlobe using a public-domain Natural Earth dotted land texture; rotate the sphere around its tilted polar axis rather than transforming a flat picture, with static fallback and reduced-motion support.

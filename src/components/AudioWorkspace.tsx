@@ -11,6 +11,8 @@ const ACCURACY = [
   { value: 30, label: "Within 30 seconds" },
   { value: 120, label: "Within 2 minutes" },
   { value: 300, label: "Within 5 minutes" },
+  { value: 3600, label: "Within 1 hour" },
+  { value: 43200, label: "Within 12 hours (broad search)" },
 ];
 
 const toLocalInput = (ms: number) => {
@@ -142,6 +144,7 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
         <SpectrogramView spec={report.spectrogram} events={report.events} />
         {top && <div className="result-details">{top.matches.map(match => <p key={match.eventId}><Plane size={12} className="inline" /> Curve {match.eventId} · {match.callsign || match.icao24} · {fmtClock(match.passedAt)} · {Math.round(match.slant)} m slant · {Math.round(match.speed)} m/s</p>)}</div>}
         {report.archive && <p className="preview-disclaimer">{report.archive.attribution} · {report.archive.rows.toLocaleString()} positions · {report.archive.days.join(", ")}</p>}
+        {report.terrainAttribution && <p className="preview-disclaimer">{report.terrainAttribution} Terrain sampled at approximately 200 m; aircraft altitude and terrain uncertainties remain.</p>}
         <Button variant="outline" onClick={reset}><RotateCcw /> New analysis</Button>
       </>
       : stage === "running" ? <div className="analysis-state" role="status"><Loader2 className="animate-spin" size={30} /><h3>{STAGE_LABELS[runStage.s]}…</h3><p>{runStage.s === "search" && runStage.p !== undefined ? `${Math.round(runStage.p * 100)}%` : "This can take up to a minute"}</p><div className="analysis-progress"><span /></div><Button variant="ghost" onClick={reset}><X /> Cancel</Button></div>

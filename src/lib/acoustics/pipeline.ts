@@ -1,17 +1,20 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { detectEvents } from "./events";
+import { detectLongEvents } from "./long-events";
+import { loadTerrain, terrainElevation, TERRAIN_ATTRIBUTION } from "./terrain";
+import { archiveWindows, CLOCK_WINDOWS, MAX_RECORDING_SECONDS, MAX_SEARCH_POSITIONS } from "./search-rules";
 import { REGION, type DopplerEvent, type FlightTrack } from "./geo";
 import { locate, toObserved, type LocateResult } from "./locate";
 import { computeSpectrogram, type Spectrogram } from "./spectrogram";
 import { z } from "zod";
 
-export type Stage = "decode" | "listen" | "flights" | "search";
+export type Stage = "decode" | "listen" | "flights" | "terrain" | "search";
 export const STAGE_LABELS: Record<Stage, string> = {
   decode: "Reading the recording",
   listen: "Listening for aircraft Doppler curves",
   flights: "Checking historical ADSB.lol aircraft positions",
-  search: "Testing every 200 m across Metro Vancouver",
+  terrain: "Loading Metro Vancouver terrain elevations",
+  search: "Comparing flight curves and refining candidate areas",
 };
 
 export interface AnalysisReport {
@@ -23,6 +26,7 @@ export interface AnalysisReport {
   events: DopplerEvent[];
   flights: number;
   result?: LocateResult;
+  terrainAttribution?: string;
   archive?: { source: string; days: string[]; rows: number; complete: boolean; attribution: string; archiveUrls: string[] };
 }
 
@@ -67,27 +71,42 @@ async function fetchFlights(begin: number, end: number) {
 }
 
 export async function analyzeRecording(blob: Blob, opts: { startUnix: number; clockSigma: number; onStage: (s: Stage, progress?: number) => void }): Promise<AnalysisReport> {
-  if (!Number.isFinite(opts.startUnix) || opts.startUnix <= 0 || opts.startUnix > Date.now() / 1000 || ![5, 30, 120, 300].includes(opts.clockSigma)) throw new AnalysisError("Check the recording start time and time accuracy.");
+  if (!Number.isFinite(opts.startUnix) || opts.startUnix <= 0 || opts.startUnix > Date.now() / 1000 || !CLOCK_WINDOWS.includes(opts.clockSigma)) throw new AnalysisError("Check the recording start time and time accuracy.");
   if (blob.size > 50 * 1024 * 1024) throw new AnalysisError("Choose an audio file smaller than 50 MB.");
   const tick = () => new Promise(r => setTimeout(r, 30));
   opts.onStage("decode"); await tick();
   const { samples, rate, duration } = await decodeToMono(blob);
   if (duration < 5) throw new AnalysisError("The recording needs to be at least 5 seconds long.");
-  if (duration > 600) throw new AnalysisError("Please trim the recording to 10 minutes or less around the aircraft sound.");
+  if (duration > MAX_RECORDING_SECONDS) throw new AnalysisError("Please trim the recording to 30 minutes or less around the aircraft sounds.");
 
   opts.onStage("listen"); await tick();
   const spectrogram = computeSpectrogram(samples, rate);
-  const events = detectEvents(spectrogram, { minDuration: 4 }).filter(event => event.coversCpa);
+  const events = detectLongEvents(spectrogram);
   const base = { duration, startUnix: opts.startUnix, clockSigma: opts.clockSigma, spectrogram, events };
   if (!events.length) return { ...base, status: "no-events", flights: 0 };
 
   opts.onStage("flights");
   const obs = toObserved(events, opts.startUnix);
-  const tMin = Math.min(...obs.map(e => e.tAbs)), tMax = Math.max(...obs.map(e => e.tAbs));
-  const archive = await fetchFlights(tMin - opts.clockSigma - 60, tMax + opts.clockSigma + 60);
-  const flights: FlightTrack[] = archive.tracks;
+  const merged = new Map<string, FlightTrack>();
+  let meta: AnalysisReport["archive"];
+  // Include the entire measured ridges and intervening silence, not just CPA centers.
+  const windows = archiveWindows(opts.startUnix - opts.clockSigma - 60, Math.min(Date.now() / 1000, opts.startUnix + duration + opts.clockSigma + 60));
+  let rowCount = 0;
+  for (const [begin, end] of windows) {
+    const archive = await fetchFlights(begin, end);
+    rowCount += archive.meta.rows;
+    if (rowCount > MAX_SEARCH_POSITIONS) throw new AnalysisError("This search has too many aircraft positions. Use a more accurate recording time.");
+    for (const track of archive.tracks) {
+      const existing = merged.get(track.icao24);
+      if (existing) existing.samples.push(...track.samples); else merged.set(track.icao24, track);
+    }
+    meta = { ...archive.meta, rows: rowCount, days: [...new Set([...(meta?.days ?? []), ...archive.meta.days])], archiveUrls: [...new Set([...(meta?.archiveUrls ?? []), ...archive.meta.archiveUrls])] };
+  }
+  const flights = [...merged.values()];
+  opts.onStage("terrain");
+  const terrain = await loadTerrain();
 
   opts.onStage("search", 0);
-  const result = await locate(obs, flights, { clockSigma: opts.clockSigma, clipStart: opts.startUnix, clipEnd: opts.startUnix + duration, onProgress: p => opts.onStage("search", p) });
-  return { ...base, status: result.candidates.length ? "located" : "no-match", flights: flights.length, result, archive: archive.meta };
+  const result = await locate(obs, flights, { clockSigma: opts.clockSigma, clipStart: opts.startUnix, clipEnd: opts.startUnix + duration, spectrogram, elevationAt: (lat, lon) => terrainElevation(terrain, lat, lon), onProgress: p => opts.onStage("search", p) });
+  return { ...base, status: result.candidates.length ? "located" : "no-match", flights: flights.length, result, archive: meta, terrainAttribution: TERRAIN_ATTRIBUTION };
 }

@@ -15,6 +15,7 @@
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
 # Location logic & pages
+- [x] Add terrain-aware delayed flight-geometry scoring, locked time/frequency sweeps, 100/50 m refinement, 30-minute recordings and bounded ±12-hour searches; 21 tests passed, browser history/no-match/noise checks passed. Synthetic historical benchmark produced an incorrect low-strength candidate, so accuracy remains unverified; demo unchanged.
 - [x] Connect local audio analysis to completed historical archive queries; verified real history response and candidate map using synthetic audio, missing coverage, noise rejection and mobile. Cinematic simulation unchanged.
 - [x] Extract November 6 full archive, correct gzip-with-.json format bug, deduplicate and load 130,659 positions from 344 aircraft; verified database count and completed-day lookup.
 - [ ] Validate accuracy against a genuine timestamped aircraft recording with known recording location; blocked by no such recording supplied. Synthetic audio with real history proves connectivity only, not localization accuracy.
