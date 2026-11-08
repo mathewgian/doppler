@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { demoProgress, demoRadius, demoSample, HIKER_DEMO } from "./hiker-demo-config";
+import { demoMapZoom, demoProgress, demoRadius, demoSample, HIKER_DEMO } from "./hiker-demo-config";
 
 describe("configured fictional hiker demo", () => {
+  it("continues zooming across the Earth-to-search handoff to the final coordinates", () => {
+    const handoff = HIKER_DEMO.timing.zoomMs;
+    expect(demoMapZoom(handoff - 1)).toBeLessThan(demoMapZoom(handoff));
+    expect(demoMapZoom(handoff)).toBeLessThan(demoMapZoom(handoff + 1));
+    expect(demoMapZoom(handoff + 4500)).toBeGreaterThan(demoMapZoom(handoff));
+    expect(demoMapZoom(handoff + HIKER_DEMO.timing.searchMs)).toBe(17);
+  });
   it("never instantly skips the requested zoom or simulated search", () => {
     expect(demoProgress(16, 4500)).toBeLessThan(.01);
     expect(demoProgress(2250, 4500)).toBe(.5);

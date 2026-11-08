@@ -1,6 +1,7 @@
 export const HIKER_DEMO = {
   location: { lat: 49.686508362919426, lng: -123.13552565162448, name: "Stawamus Chief", address: "Squamish, British Columbia" },
   timing: { fadeMs: 1000, zoomMs: 4500, searchMs: 9000 },
+  mapCamera: { blendStart: .76, initialZoom: 11, finalZoom: 17 },
   search: { initialRadiusM: 2400, finalRadiusM: 25 },
   // Fictional flight samples. Altitude is metres; velocity is metres/second; timestamps are UTC.
   flight: [
@@ -15,6 +16,13 @@ export const HIKER_DEMO = {
 
 export function demoProgress(elapsedMs: number, durationMs: number) {
   return Math.max(0, Math.min(1, elapsedMs / durationMs));
+}
+
+export function demoMapZoom(elapsedMs: number) {
+  const start = HIKER_DEMO.timing.zoomMs * HIKER_DEMO.mapCamera.blendStart;
+  const end = HIKER_DEMO.timing.zoomMs + HIKER_DEMO.timing.searchMs;
+  const p = demoProgress(elapsedMs - start, end - start);
+  return HIKER_DEMO.mapCamera.initialZoom + p * (HIKER_DEMO.mapCamera.finalZoom - HIKER_DEMO.mapCamera.initialZoom);
 }
 
 export function demoSample(progress: number) {

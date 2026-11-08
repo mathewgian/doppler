@@ -3,9 +3,14 @@ import L from "leaflet";
 import LocatorMap from "./LocatorMap";
 import { demoRadius, demoSample, HIKER_DEMO } from "@/lib/hiker-demo-config";
 
-export default function SimulatedSearch({ progress }: { progress: number }) {
+export default function SimulatedSearch({ progress, cameraZoom }: { progress: number; cameraZoom: number }) {
   const layers = useRef<{ map: L.Map; plane: L.Marker; region: L.Circle; hiker: L.Marker; trail: L.Polyline }>();
   const sample = demoSample(progress);
+  useEffect(() => {
+    const current = layers.current;
+    if (!current) return;
+    current.map.setView([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], cameraZoom, { animate: false });
+  }, [cameraZoom]);
   useEffect(() => {
     const current = layers.current;
     if (!current) return;
@@ -19,8 +24,8 @@ export default function SimulatedSearch({ progress }: { progress: number }) {
   const index = Math.min(hz.length - 2, Math.floor(progress * (hz.length - 1)));
   const f = progress * (hz.length - 1) - index;
   const pitch = hz[index] + (hz[index + 1] - hz[index]) * f;
-  return <div className="sim-search">
-    <LocatorMap location={HIKER_DEMO.location} showMarker={false} zoom={13} className="demo-search-map" onReady={map => {
+  return <div className="sim-search" data-camera-zoom={cameraZoom.toFixed(4)}>
+    <LocatorMap location={HIKER_DEMO.location} showMarker={false} zoom={HIKER_DEMO.mapCamera.initialZoom} className="demo-search-map" onReady={map => {
       map.zoomControl.remove();
       const color = getComputedStyle(map.getContainer()).getPropertyValue("--signal").trim();
       const signal = `hsl(${color})`;
@@ -30,9 +35,7 @@ export default function SimulatedSearch({ progress }: { progress: number }) {
       const plane = L.marker([sample.lat, sample.lng], { zIndexOffset: 1000, icon: L.divIcon({ className: "demo-plane", html: '<span aria-label="Simulated aircraft">✈</span>', iconSize: [48, 48], iconAnchor: [24, 24] }) }).addTo(map);
       const region = L.circle([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { radius: demoRadius(progress), color: signal, weight: 3, fillOpacity: .18, className: "demo-search-region" }).addTo(map);
       const hiker = L.marker([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { opacity: progress >= 1 ? 1 : 0, icon: L.divIcon({ className: "location-marker", html: "<span></span>", iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(map);
-      const fit = () => map.fitBounds(L.latLngBounds(route).extend(region.getBounds()), { paddingTopLeft: [40, 100], paddingBottomRight: [40, 40], animate: false });
-      fit();
-      map.on("resize", fit);
+      map.setView([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], cameraZoom, { animate: false });
       layers.current = { map, plane, region, hiker, trail };
     }} />
     <div className="demo-search-readout" role="status">
