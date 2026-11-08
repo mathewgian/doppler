@@ -14,11 +14,11 @@ export default function ConceptDiagram({ concept }: { concept: Concept }) {
     </defs>
     <rect width="360" height="210" fill={`url(#grid-${concept})`} />
     {concept === "doppler" && <>
-      {[{ x: 92, r: 90 }, { x: 120, r: 72 }, { x: 148, r: 54 }, { x: 176, r: 36 }, { x: 204, r: 18 }].map(({ x, r }) => <circle key={x} cx={x} cy="90" r={r} className="diagram-wave" />)}
+      {[{ x: 166, r: 88 }, { x: 177, r: 66 }, { x: 188, r: 44 }, { x: 199, r: 22 }].map(({ x, r }) => <circle key={x} cx={x} cy="90" r={r} className="diagram-wave" />)}
       <path d="M218 90l-24-14 7 14-7 14z" className="diagram-plane" />
-      <path d="M242 90h45m-7-5 7 5-7 5" className="diagram-line" />
-      <text x="20" y="190">Lower pitch</text><text x="244" y="190">Higher pitch</text>
-      <text x="234" y="55" className="diagram-small">Flight direction</text>
+      <path d="M292 90h45m-7-5 7 5-7 5" className="diagram-line" />
+      <text x="20" y="190">Lower pitch</text><text x="262" y="190">Higher pitch</text>
+      <text x="270" y="72" className="diagram-small">Flight direction</text>
     </>}
     {concept === "range" && <>
       <path d="M28 171H332M75 170V42M75 42H290" className="diagram-guide" />

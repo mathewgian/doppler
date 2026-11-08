@@ -3,6 +3,7 @@ import { ArrowRight, AudioLines, Check, Clock, FileAudio, Loader2, MapPin, Mic, 
 import { Button } from "@/components/ui/button";
 import LocatorMap, { ICICS } from "./LocatorMap";
 import ResultMap from "./ResultMap";
+import { resultToGeoJSON, downloadGeoJSON } from "@/lib/acoustics/geojson";
 import SpectrogramView from "./SpectrogramView";
 import { embeddedRecordingTime } from "@/lib/acoustics/recording-time";
 import { analyzeRecording, STAGE_LABELS, type AnalysisReport, type Stage } from "@/lib/acoustics/pipeline";
@@ -148,7 +149,7 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
             {report.method === "arrival" ? <div><dt>Evidence</dt><dd>Jet-roar arrival</dd></div> : <div><dt>Matched flyover curves</dt><dd>{top.matched} / {report.events.length}</dd></div>}
             <div><dt>Relative fit strength</dt><dd>{report.result.confidence}</dd></div>
             <div><dt>Clock adjustment</dt><dd>{top.clockOffset.toFixed(0)} s</dd></div>
-          </dl>{report.method === "arrival" && <p>No clean falling-pitch curve was found, so this estimate matches when the aircraft's high-pitched roar rose in the recording against archived flight positions, sound-travel delay and air absorption. It points along that aircraft's path, not to an exact spot.</p>}{new Set(top.matches.map(match => match.icao24)).size < 2 && <p>Only one aircraft constraint matched. This is an ambiguous candidate, not triangulation; additional independent flyovers are needed.</p>}<p>Aircraft noise, terrain, wind and incomplete reception can create false matches. Do not use this estimate for rescue or safety decisions.</p></div>
+          </dl>{report.method === "arrival" && <p>No clean falling-pitch curve was found, so this estimate matches when the aircraft's high-pitched roar rose in the recording against archived flight positions, sound-travel delay and air absorption. It points along that aircraft's path, not to an exact spot.</p>}{new Set(top.matches.map(match => match.icao24)).size < 2 && <p>Only one aircraft constraint matched. This is an ambiguous candidate, not triangulation; additional independent flyovers are needed.</p>}<p>Aircraft noise, terrain, wind and incomplete reception can create false matches. Do not use this estimate for rescue or safety decisions.</p><Button variant="outline" onClick={() => downloadGeoJSON(resultToGeoJSON(report.result!, { fileName: audio?.name, method: report.method }), `${(audio?.name ?? "doppler-estimate").replace(/\.[^.]+$/, "")}.geojson`)}><MapPin /> Export GeoJSON</Button></div>
         </div> : <div className="analysis-state" role="status"><AudioLines size={30} /><h3>{report.status === "no-events" ? "No usable flyover curves" : "No aircraft match"}</h3><p>{report.status === "no-events" ? "No sufficiently coherent falling-pitch band was found in 5–800 Hz, including broadened aircraft bands. Audible aircraft alone do not establish a usable curve. No location was calculated." : "The archived aircraft tracks did not explain the recording. No location was calculated."}</p></div>}
         {report.events.some(e => e.uncertain) && <p className="preview-disclaimer">Short or broadened aircraft curves carry extra uncertainty. Any candidate from this evidence has low fit strength.</p>}
         <SpectrogramView spec={report.spectrogram} events={report.events} />

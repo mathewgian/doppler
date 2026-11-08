@@ -54,7 +54,7 @@ const TechnologySection = () => {
           <li>Flight positions for that moment. Availability depends on the flight-data provider and access permissions; historical coverage is not guaranteed.</li>
           <li>The research model covers Metro Vancouver. Estimates use completed aircraft archives and are not verified caller locations.</li>
         </ul>
-        <Button asChild className="primary-cta"><Link to="/#workspace">Locate a recording <ArrowRight size={17} /></Link></Button>
+        <Button asChild className="primary-cta"><Link to="/#workspace">Locate a sound <ArrowRight size={17} /></Link></Button>
       </section>
   </section>;
 };
