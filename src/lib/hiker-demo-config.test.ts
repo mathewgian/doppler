@@ -2,23 +2,22 @@ import { describe, expect, it } from "vitest";
 import { demoMapZoom, demoProgress, demoRadius, demoSample, HIKER_DEMO } from "./hiker-demo-config";
 
 describe("configured fictional hiker demo", () => {
-  it("shrinks the projected circle throughout the six-level map zoom and ends at 25 metres", () => {
+  it("starts with a large circle and continuously shrinks it on the stationary map", () => {
     let previous = demoRadius(0);
     for (let i = 1; i <= 20; i++) {
       const p = i / 20;
-      const projected = demoRadius(p) * 2 ** (6 * p);
+      const projected = demoRadius(p);
       expect(projected).toBeLessThan(previous);
       previous = projected;
     }
     expect(demoRadius(0)).toBe(2400);
     expect(demoRadius(1)).toBe(25);
   });
-  it("continues zooming across the Earth-to-search handoff to the final coordinates", () => {
+  it("does not zoom the map during the Earth handoff or the search", () => {
     const handoff = HIKER_DEMO.timing.zoomMs;
-    expect(demoMapZoom(handoff - 1)).toBeLessThan(demoMapZoom(handoff));
-    expect(demoMapZoom(handoff)).toBeLessThan(demoMapZoom(handoff + 1));
-    expect(demoMapZoom(handoff + 4500)).toBeGreaterThan(demoMapZoom(handoff));
-    expect(demoMapZoom(handoff + HIKER_DEMO.timing.searchMs)).toBe(17);
+    for (const time of [0, handoff - 1, handoff, handoff + 1, handoff + 4500, handoff + HIKER_DEMO.timing.searchMs]) {
+      expect(demoMapZoom(time)).toBe(13);
+    }
   });
   it("never instantly skips the requested zoom or simulated search", () => {
     expect(demoProgress(16, 4500)).toBeLessThan(.01);

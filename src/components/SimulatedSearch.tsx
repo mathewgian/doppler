@@ -4,45 +4,32 @@ import LocatorMap from "./LocatorMap";
 import { demoRadius, demoSample, HIKER_DEMO } from "@/lib/hiker-demo-config";
 import { layoutDemoFlight, sampleDemoFlight } from "@/lib/demo-flight-layout";
 
-export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: { progress: number; cameraZoom: number; cameraPaused: boolean }) {
-  const layers = useRef<{ map: L.Map; region: L.Circle; hiker: L.Marker; updateFlight: () => void }>();
+export default function SimulatedSearch({ progress }: { progress: number }) {
+  const layers = useRef<{ hiker: L.Marker; updateFlight: () => void; syncRadius: () => void }>();
   const flightProgress = useRef(progress);
   flightProgress.current = progress;
   const [searchRadius, setSearchRadius] = useState<number>(HIKER_DEMO.search.initialRadiusM);
   const sample = demoSample(progress);
-  const cameraMoving = cameraZoom > HIKER_DEMO.mapCamera.initialZoom && cameraZoom < HIKER_DEMO.mapCamera.finalZoom;
-  useEffect(() => {
-    const current = layers.current;
-    if (!current) return;
-    const map = current.map;
-    map.stop();
-    if (cameraPaused) return;
-    const target: L.LatLngTuple = [HIKER_DEMO.location.lat, HIKER_DEMO.location.lng];
-    if (cameraMoving) {
-      const cameraDuration = HIKER_DEMO.timing.searchMs + HIKER_DEMO.timing.zoomMs * (1 - HIKER_DEMO.mapCamera.blendStart);
-      const remaining = (HIKER_DEMO.mapCamera.finalZoom - cameraZoom) / (HIKER_DEMO.mapCamera.finalZoom - HIKER_DEMO.mapCamera.initialZoom);
-      map.flyTo(target, HIKER_DEMO.mapCamera.finalZoom, { duration: remaining * cameraDuration / 1000, easeLinearity: .5 });
-    } else if (cameraZoom >= HIKER_DEMO.mapCamera.finalZoom) {
-      map.setView(target, HIKER_DEMO.mapCamera.finalZoom, { animate: false });
-    }
-    return () => { map.stop(); };
-    // Start/resume one native tile-preserving flight, not a tile reset on every frame.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraMoving, cameraPaused]);
   useEffect(() => {
     const current = layers.current;
     if (!current) return;
     current.hiker.setOpacity(progress >= 1 ? 1 : 0);
     current.updateFlight();
+    current.syncRadius();
   }, [progress, sample.lat, sample.lng]);
   const hz = HIKER_DEMO.dopplerHz;
   const index = Math.min(hz.length - 2, Math.floor(progress * (hz.length - 1)));
   const f = progress * (hz.length - 1) - index;
   const pitch = hz[index] + (hz[index + 1] - hz[index]) * f;
-  return <div className="sim-search" data-camera-zoom={cameraZoom.toFixed(4)}>
-    <LocatorMap location={HIKER_DEMO.location} showMarker={false} zoom={HIKER_DEMO.mapCamera.initialZoom} className="demo-search-map" onReady={map => {
+  return <div className="sim-search" data-camera-zoom={HIKER_DEMO.mapCamera.zoom}>
+    <LocatorMap location={HIKER_DEMO.location} showMarker={false} zoom={HIKER_DEMO.mapCamera.zoom} className="demo-search-map" onReady={map => {
       map.zoomControl.remove();
-      const route = HIKER_DEMO.flight.map(p => map.project([p.lat, p.lng], HIKER_DEMO.mapCamera.initialZoom));
+      map.dragging.disable();
+      map.touchZoom.disable();
+      map.doubleClickZoom.disable();
+      map.boxZoom.disable();
+      map.keyboard.disable();
+      const route = HIKER_DEMO.flight.map(p => map.project([p.lat, p.lng], HIKER_DEMO.mapCamera.zoom));
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("class", "demo-flight-overlay");
       const makePath = (className: string) => {
@@ -75,14 +62,11 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
         edgeLabel.style.top = `${Math.max(...layout.map(p => p.y)) + 32}px`;
       };
       map.on("move resize", updateFlight);
-      const region = L.circle([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { radius: HIKER_DEMO.search.initialRadiusM, opacity: 0, fillOpacity: 0 }).addTo(map);
-      // A screen overlay avoids Leaflet's cached SVG scale during native flyTo.
+      // The stationary map keeps metre-to-pixel scale fixed while the timeline shrinks the circle.
       const circle = L.DomUtil.create("div", "demo-search-region", map.getContainer());
       circle.setAttribute("aria-label", "Simulated search area");
       const syncRadius = () => {
-        const camera = HIKER_DEMO.mapCamera;
-        const radius = demoRadius((map.getZoom() - camera.initialZoom) / (camera.finalZoom - camera.initialZoom));
-        region.setRadius(radius);
+        const radius = demoRadius(flightProgress.current);
         const metresPerPixel = 40075016.686 * Math.cos(HIKER_DEMO.location.lat * Math.PI / 180) / (256 * 2 ** map.getZoom());
         const diameter = 2 * radius / metresPerPixel;
         circle.style.width = `${diameter}px`;
@@ -91,9 +75,8 @@ export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: 
       };
       map.on("move", syncRadius);
       const hiker = L.marker([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], { opacity: progress >= 1 ? 1 : 0, icon: L.divIcon({ className: "location-marker", html: "<span></span>", iconSize: [24, 24], iconAnchor: [12, 12] }) }).addTo(map);
-      map.setView([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], cameraZoom, { animate: false });
       syncRadius();
-      layers.current = { map, region, hiker, updateFlight };
+      layers.current = { hiker, updateFlight, syncRadius };
       updateFlight();
     }} />
     <div className="demo-search-readout" role="status">

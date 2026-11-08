@@ -8,7 +8,7 @@
 - Use Leaflet with credited OpenStreetMap raster tiles for the location-result map, requiring no provider key.
 - Keep audio files local in browser memory and revoke object URLs on replacement or unmount.
 - Keep all cinematic demo story data and timings in hiker-demo-config; CinematicHikerDemo reuses HikerDemo, RotatingGlobe and LocatorMap to visualize only configured simulation data without touching live services or inferring locations from audio.
-- Start and resume a tile-preserving native Leaflet flight using the shared zoom/search timeline's remaining duration; never reset map views each frame, which clears tiles and causes blackout/jitter.
+- Keep the cinematic demo map camera stationary at its configured neighborhood zoom; drive the search circle from flight progress rather than map zoom so pause/resume keeps both animations synchronized.
 - Display the configured geographic demo route as an explicitly labeled fixed-scale schematic anchored near the search center, with arc-length aircraft progress and a shared trail endpoint; street-level zoom cannot keep the full geographic flight in view.
 - Keep Technology content in TechnologySection on the home page and redirect legacy /technology links to /#technology; SiteHeader anchors scroll to the section and home callbacks reset the cinematic view.
 - Use the retarded-time Doppler model for the teaching visual so sound propagation and the plotted pitch stay synchronized.

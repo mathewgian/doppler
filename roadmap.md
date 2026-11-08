@@ -1,4 +1,5 @@
 # Audio locator
+- [x] Replace demo map zoom with a stationary neighborhood-scale map and timeline-driven shrinking circle; verified fixed tiles, readable labels, shrinking circle, connected plane, desktop/mobile and 11 tests. Globe unchanged.
 - [x] Keep the demo plane in frame with constant-speed connected movement and a labeled fixed-scale full route near the shrinking circle; verified 19 samples each on desktop/mobile, 11 tests, and unchanged Earth/map camera animations.
 - [x] Keep flight strokes and aircraft fixed-size during zoom; verified constant stroke width, 48px aircraft, visible labeled edge indicator, circle shrink, pause and mobile. Geographic route and globe unchanged.
 - [x] Import September 1, 2026 Metro Vancouver archive with five-second request spacing; verified 196,668 rows across 645 source identifiers, completed coverage and historical analysis lookup.
