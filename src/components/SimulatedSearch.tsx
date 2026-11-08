@@ -3,14 +3,28 @@ import L from "leaflet";
 import LocatorMap from "./LocatorMap";
 import { demoRadius, demoSample, HIKER_DEMO } from "@/lib/hiker-demo-config";
 
-export default function SimulatedSearch({ progress, cameraZoom }: { progress: number; cameraZoom: number }) {
+export default function SimulatedSearch({ progress, cameraZoom, cameraPaused }: { progress: number; cameraZoom: number; cameraPaused: boolean }) {
   const layers = useRef<{ map: L.Map; plane: L.Marker; region: L.Circle; hiker: L.Marker; trail: L.Polyline }>();
   const sample = demoSample(progress);
+  const cameraMoving = cameraZoom > HIKER_DEMO.mapCamera.initialZoom && cameraZoom < HIKER_DEMO.mapCamera.finalZoom;
   useEffect(() => {
     const current = layers.current;
     if (!current) return;
-    current.map.setView([HIKER_DEMO.location.lat, HIKER_DEMO.location.lng], cameraZoom, { animate: false });
-  }, [cameraZoom]);
+    const map = current.map;
+    map.stop();
+    if (cameraPaused) return;
+    const target: L.LatLngTuple = [HIKER_DEMO.location.lat, HIKER_DEMO.location.lng];
+    if (cameraMoving) {
+      const cameraDuration = HIKER_DEMO.timing.searchMs + HIKER_DEMO.timing.zoomMs * (1 - HIKER_DEMO.mapCamera.blendStart);
+      const remaining = (HIKER_DEMO.mapCamera.finalZoom - cameraZoom) / (HIKER_DEMO.mapCamera.finalZoom - HIKER_DEMO.mapCamera.initialZoom);
+      map.flyTo(target, HIKER_DEMO.mapCamera.finalZoom, { duration: remaining * cameraDuration / 1000, easeLinearity: .5 });
+    } else if (cameraZoom >= HIKER_DEMO.mapCamera.finalZoom) {
+      map.setView(target, HIKER_DEMO.mapCamera.finalZoom, { animate: false });
+    }
+    return () => { map.stop(); };
+    // Start/resume one native tile-preserving flight, not a tile reset on every frame.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraMoving, cameraPaused]);
   useEffect(() => {
     const current = layers.current;
     if (!current) return;

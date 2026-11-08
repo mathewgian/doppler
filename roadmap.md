@@ -1,4 +1,5 @@
 # Audio locator
+- [x] Fix globe-to-map blackout and tile jitter with one tile-preserving native map flight; verified loaded tiles during normal-motion fade/zoom, pause/resume, final arrival and mobile. Globe rotation/zoom unchanged.
 - [x] Continue cinematic map zoom through the unchanged Earth animation into final hiker coordinates; verified increasing zoom across handoff, pause/resume, final zoom 17, mobile and no runtime errors.
 - [x] Stopped startup hash scrolling; Technology click still scrolls. Matched globe and screen backgrounds by removing screen blending. Restored full user-triggered animation timeline and preloaded scenes; verified natural audio end, textured Earth zoom, moving aircraft, frequency/radius changes and reveal with reduced motion enabled.
 - [x] Explore the demo opens cinematic hiker audio/zoom/search; inline hiker section removed. Verified actual hosted recording with local delivery interception, natural audio end, aircraft movement, radius 1775→397→25 m, exact reveal, restart/skip, mobile and no runtime errors.

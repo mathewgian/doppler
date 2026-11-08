@@ -41,7 +41,7 @@ function DemoSequence({ restart }: { restart: () => void }) {
     <div className="demo-topbar"><span className="demo-label">FICTIONAL SIMULATION</span><div>{(phase === "zoom" || phase === "search") && <Button variant="ghost" onClick={() => setPaused(value => !value)}>{paused ? <Play size={16} /> : <Pause size={16} />}{paused ? "Resume animation" : "Pause animation"}</Button>}<Button variant="ghost" onClick={() => { setProgress(1); setPhase("revealed"); }}><SkipForward size={16} /> Skip Animation</Button><Button variant="ghost" onClick={restart}><RotateCcw size={16} /> Restart Demo</Button></div></div>
     {(phase === "audio" || phase === "fade") && <div className="demo-audio-scene"><HikerDemo fullscreen onEnded={() => setPhase("fade")} /></div>}
     <>
-      <div className={`demo-map-scene ${phase === "zoom" && progress < .76 ? "demo-map-hidden" : ""}`}><SimulatedSearch progress={mapVisible ? progress : 0} cameraZoom={demoMapZoom(cameraElapsed)} /></div>
+      <div className={`demo-map-scene ${phase === "zoom" && progress < .76 ? "demo-map-hidden" : ""}`}><SimulatedSearch progress={mapVisible ? progress : 0} cameraZoom={demoMapZoom(cameraElapsed)} cameraPaused={paused} /></div>
       {!mapVisible && <div className={`demo-earth-scene ${phase !== "zoom" || progress >= .76 ? "demo-earth-blend" : ""}`}><RotatingGlobe active={false} zoomProgress={phase === "zoom" ? progress : 0} target={HIKER_DEMO.location} /><div className="demo-destination"><span>SIMULATED DESTINATION</span><h2>Stawamus Chief</h2><p>Squamish, British Columbia</p></div></div>}
     </>
   </div>;
