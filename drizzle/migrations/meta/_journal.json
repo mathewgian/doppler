@@ -8,6 +8,13 @@
       "when": 1794094200340,
       "tag": "0000_create_adsblol_archive_positions",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794095505941,
+      "tag": "0001_archive_import_coverage",
+      "breakpoints": true
     }
   ]
 }

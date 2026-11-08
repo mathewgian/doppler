@@ -47,7 +47,7 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
 
   const air: Prepared[] = [];
   for (const f of flights) {
-    const s = [...f.samples].sort((a, b) => a.t - b.t).filter((p, i, a) => i === 0 || p.t > a[i - 1].t);
+    const s = [...f.samples].filter(p => [p.t, p.lat, p.lon, p.alt].every(Number.isFinite) && p.alt > 0).sort((a, b) => a.t - b.t).filter((p, i, a) => i === 0 || p.t > a[i - 1].t);
     if (s.length < 3) continue;
     const t = new Float64Array(s.length), x = new Float64Array(s.length), y = new Float64Array(s.length), z = new Float64Array(s.length);
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
@@ -79,15 +79,19 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
       let bestR = Infinity, bestTau = 0, bestSpd = 0, edge = false;
       const n = A.t.length;
       for (let i = 0; i < n - 1; i++) {
+        const dt = A.t[i + 1] - A.t[i];
+        if (dt > 30 || dt <= 0) continue; // never fabricate a flight across archive gaps
         const dx = A.x[i + 1] - A.x[i], dy = A.y[i + 1] - A.y[i], dz = A.z[i + 1] - A.z[i];
         const rx = A.x[i] - px, ry = A.y[i] - py, rz = A.z[i];
         const len2 = dx * dx + dy * dy + dz * dz;
-        if (len2 < 1e-6) continue;
+        if (len2 < 1e-6 || Math.sqrt(len2) / dt > 340) continue;
         let s = -(rx * dx + ry * dy + rz * dz) / len2;
         const clamped = s <= 0 || s >= 1;
         s = s < 0 ? 0 : s > 1 ? 1 : s;
         const ex = rx + s * dx, ey = ry + s * dy, ez = rz + s * dz;
         const r = Math.sqrt(ex * ex + ey * ey + ez * ez);
+        const arrived = A.t[i] + s * dt + r / C;
+        if (arrived < opts.clipStart - opts.clockSigma || arrived > opts.clipEnd + opts.clockSigma) continue;
         if (r < bestR) {
           bestR = r; bestTau = A.t[i] + s * (A.t[i + 1] - A.t[i]);
           bestSpd = Math.sqrt(len2) / (A.t[i + 1] - A.t[i]);
@@ -189,8 +193,9 @@ export async function locate(events: ObservedEvent[], flights: FlightTrack[], op
   let confidence: LocateResult["confidence"] = "none";
   if (top && top.matched > 0) {
     confidence = "low";
-    if (top.mass >= 0.35 && top.matched >= 1 && opts.clockSigma <= 120) confidence = "medium";
-    if (top.mass >= 0.6 && top.matched === nE && nE >= 2) confidence = "high";
+    const distinctAircraft = new Set(top.matches.map(match => match.icao24)).size;
+    if (top.mass >= 0.35 && distinctAircraft >= 2 && opts.clockSigma <= 120) confidence = "medium";
+    if (top.mass >= 0.6 && top.matched === nE && distinctAircraft >= 2) confidence = "high";
   }
   void minIdx;
   return { candidates: top && top.matched > 0 ? candidates : [], heat: top && top.matched > 0 ? heat : [], confidence, aircraftConsidered: air.length, cells: nx * ny };

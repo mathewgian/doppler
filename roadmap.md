@@ -9,9 +9,12 @@
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
 # Location logic & pages
-- [ ] Finish ADSB.lol Metro Vancouver past-month extraction and database loading; blocked by ~113 GB of global archive transfer requiring a sustained batch worker. Five-second-spaced manifest verified for Oct 8–Nov 6; streaming importer and protected table ready, zero positions loaded.
+- [x] Connect local audio analysis to completed historical archive queries; verified real history response and candidate map using synthetic audio, missing coverage, noise rejection and mobile. Cinematic simulation unchanged.
+- [x] Extract November 6 full archive, correct gzip-with-.json format bug, deduplicate and load 130,659 positions from 344 aircraft; verified database count and completed-day lookup.
+- [ ] Validate accuracy against a genuine timestamped aircraft recording with known recording location; blocked by no such recording supplied. Synthetic audio with real history proves connectivity only, not localization accuracy.
+- [ ] Finish other 29 days of ADSB.lol past-month extraction and loading; November 6 imported, remaining ~109 GB needs a sustained batch run. Five-second-spaced request rule preserved.
 - [ ] Verify OpenSky OAuth flight lookup: credentials saved and function deployed, but the live sign-in request timed out. Blocked by OpenSky connectivity; keep audio analysis separate.
-- [ ] Real location logic: synthetic tests exist; live results blocked by unavailable, unverified OpenSky flight access. Keep public location results simulated.
+- [x] Replace OpenSky dependency in recording analysis with completed ADSB.lol historical tracks; results explicitly experimental, single-aircraft candidates ambiguous, no fallback simulation.
 - [x] Verify GeoLocator title/brand returns to the opening screen, including after the demo.
 - [x] Finish and verify Technology page: existing content, plain-language explanations and interactive flight-path/frequency visual on desktop and mobile.
 - [x] Move Technology visual first and pair three-sentence concept summaries with matching diagrams; verified desktop/tablet/mobile and interactive controls.

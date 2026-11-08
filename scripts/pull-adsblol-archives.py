@@ -10,6 +10,7 @@ import io
 import json
 import time
 import tarfile
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.error import HTTPError
@@ -103,22 +104,38 @@ def process_day(release, day, output, max_bytes):
         raise RuntimeError("No split tar assets available")
     pending = output / f"{day}.partial.csv"
     count = 0
-    with SplitStream([a["browser_download_url"] for a in assets], max_bytes) as raw, io.BufferedReader(raw) as stream, tarfile.open(fileobj=stream, mode="r|") as archive, pending.open("w", newline="") as csv_file:
+    traces = 0
+    dedup = output / f"{day}.dedup.sqlite"
+    dedup.unlink(missing_ok=True)
+    with sqlite3.connect(dedup) as keys, SplitStream([a["browser_download_url"] for a in assets], max_bytes) as raw, io.BufferedReader(raw) as stream, tarfile.open(fileobj=stream, mode="r|") as archive, pending.open("w", newline="") as csv_file:
+        keys.execute("CREATE TABLE seen (icao TEXT, observed TEXT, PRIMARY KEY (icao, observed)) WITHOUT ROWID")
         writer = csv.DictWriter(csv_file, fieldnames=COLUMNS)
         writer.writeheader()
         for member in archive:
-            if not member.isfile() or "/traces/" not in "/" + member.name or not member.name.endswith(".json.gz"):
+            if not member.isfile() or "/traces/" not in "/" + member.name or not member.name.endswith((".json.gz", ".json")):
                 continue
             source = archive.extractfile(member)
             if source is None:
                 continue
-            with source, gzip.GzipFile(fileobj=source) as compressed:
-                doc = json.load(compressed)
+            # ADSB.lol uses gzip bytes even for trace_full_*.json members.
+            with source, io.BufferedReader(source) as buffered:
+                if buffered.peek(2)[:2] == b"\x1f\x8b":
+                    with gzip.GzipFile(fileobj=buffered) as compressed:
+                        doc = json.load(compressed)
+                else:
+                    doc = json.load(buffered)
+            traces += 1
             for row in normalize_trace(doc, release["html_url"], day):
+                inserted = keys.execute("INSERT OR IGNORE INTO seen VALUES (?, ?)", (row["icao24"], row["observed_at"]))
+                if inserted.rowcount == 0:
+                    continue
                 writer.writerow(row)
                 count += 1
+    if traces == 0:
+        raise RuntimeError("No trace documents read; archive is not validated")
     pending.rename(output / f"{day}.csv")
-    (output / f"{day}.done.json").write_text(json.dumps({"rows": count, "archive_url": release["html_url"], "license": "ODbL-1.0"}))
+    dedup.unlink(missing_ok=True)
+    (output / f"{day}.done.json").write_text(json.dumps({"day": day, "rows": count, "traces": traces, "archive_url": release["html_url"], "license": "ODbL-1.0"}))
     return count
 
 

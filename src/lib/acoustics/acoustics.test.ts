@@ -92,4 +92,9 @@ describe("acoustic geolocation", () => {
     for (let i = 0; i < noise.length; i++) noise[i] = 0.05 * gauss();
     expect(detectEvents(computeSpectrogram(noise, RATE)).length).toBe(0);
   });
+  it("never labels a single-aircraft constraint as medium or high confidence", async () => {
+    const res = await locate(toObserved(events.slice(0, 1), T0), flights().slice(0, 1), { clockSigma: 5, clipStart: T0, clipEnd: T0 + DUR });
+    expect(res.candidates.length).toBeGreaterThan(0);
+    expect(res.confidence).toBe("low");
+  });
 });

@@ -1,5 +1,10 @@
 import importlib.util
 import unittest
+import io
+import json
+import gzip
+import tarfile
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,6 +14,20 @@ spec.loader.exec_module(archive)
 
 
 class TraceImportTests(unittest.TestCase):
+    def test_gzipped_trace_with_json_extension_is_processed(self):
+        doc = {"icao": "ABC123", "timestamp": 1791417600, "trace": [[5, 49.2827, -123.1207, 1000, 100, 180, 0, 0, None]]}
+        doc["trace"].append(list(doc["trace"][0]))
+        payload = gzip.compress(json.dumps(doc).encode())
+        stream = io.BytesIO()
+        with tarfile.open(fileobj=stream, mode="w") as tar:
+            member = tarfile.TarInfo("./traces/23/trace_full_abc123.json")
+            member.size = len(payload)
+            tar.addfile(member, io.BytesIO(payload))
+        with tempfile.TemporaryDirectory() as folder, patch.object(archive, "open_source", return_value=io.BytesIO(stream.getvalue())):
+            count = archive.process_day({"assets": [{"name": "day.tar.aa", "browser_download_url": "https://example.com"}], "html_url": "https://github.com/adsblol/example"}, "2026-10-08", Path(folder), 0)
+            self.assertEqual(count, 1)
+            self.assertEqual(json.loads((Path(folder) / "2026-10-08.done.json").read_text())["traces"], 1)
+
     def test_five_second_source_spacing(self):
         archive.last_request = 100
         with patch.object(archive.time, "monotonic", side_effect=[102, 105]), patch.object(archive.time, "sleep") as pause, patch.object(archive, "urlopen"):

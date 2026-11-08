@@ -47,12 +47,12 @@ const TechnologySection = () => {
       </section>
 
       <section className="tech-limits">
-        <h2>What it needs to work</h2><p className="tech-status"><span className="status-dot" /> Research concept · Location results are currently simulated.</p>
+        <h2>What it needs to work</h2><p className="tech-status"><span className="status-dot" /> Experimental archive matching · The hiker demo is simulated.</p>
         <ul>
           <li>At least one plane passing within a few kilometres, ideally two or more. Each extra flyover makes the answer much sharper.</li>
           <li>A rough idea of when the recording started. The closer you know the time, the better the result.</li>
           <li>Flight positions for that moment. Availability depends on the flight-data provider and access permissions; historical coverage is not guaranteed.</li>
-          <li>The research model covers Metro Vancouver. Public map results remain simulated until live flight matching is verified.</li>
+          <li>The research model covers Metro Vancouver. Estimates use completed aircraft archives and are not verified caller locations.</li>
         </ul>
         <Button asChild className="primary-cta"><Link to="/#workspace">Locate a recording <ArrowRight size={17} /></Link></Button>
       </section>

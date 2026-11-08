@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      aircraft_archive_days: {
+        Row: {
+          archive_url: string
+          completed_at: string
+          day: string
+          row_count: number
+        }
+        Insert: {
+          archive_url: string
+          completed_at?: string
+          day: string
+          row_count: number
+        }
+        Update: {
+          archive_url?: string
+          completed_at?: string
+          day?: string
+          row_count?: number
+        }
+        Relationships: []
+      }
       aircraft_archive_positions: {
         Row: {
           altitude_m: number | null
