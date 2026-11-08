@@ -15,6 +15,7 @@
 - [x] Add audio upload, microphone recording, and explicitly simulated map result.
 - [x] Verify desktop/mobile and audio demo flow.
 # Location logic & pages
+- [x] Kitsilano reference recording now localizes acoustically: fixed wrong archive day (18:43 PDT = July 20 UTC; upload time was used instead of embedded start time), imported/verified July 20, 2025 (231,324 positions), added absorption-gated jet-roar arrival matching for broadband passes. Upload lands ~660 m from the reference spot via SNBD1; 36 tests pass. Location tags never read.
 - [x] Improve duration-aware short-clip and overlapping/broadened aircraft curve detection; 29 acoustic tests passed and the real airshow upload completed without runtime errors. Its 7.97-second audio still yielded no usable curve or acoustic location; metadata was not used. Cinematic demo unchanged.
 - [x] Change uploaded recording Doppler search from 30–1,000 Hz to 5–800 Hz; verified frequency boundaries, five-second upload analysis, aircraft detection and matching with 18 passing tests. Demo unchanged.
 - [x] Add and test a bounded, retry-safe CSV batch importer; 11 Python tests passed and July's 223,811 rows prepared in 224 batches of at most 1,000 rows. Managed execution requires an approved write adapter that is not available; no July data loaded or completed coverage recorded.

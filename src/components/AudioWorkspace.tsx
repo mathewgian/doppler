@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import LocatorMap, { ICICS } from "./LocatorMap";
 import ResultMap from "./ResultMap";
 import SpectrogramView from "./SpectrogramView";
+import { embeddedRecordingTime } from "@/lib/acoustics/recording-time";
 import { analyzeRecording, STAGE_LABELS, type AnalysisReport, type Stage } from "@/lib/acoustics/pipeline";
 
 const ACCURACY = [
@@ -34,7 +35,7 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
   const [runStage, setRunStage] = useState<{ s: Stage; p?: number }>({ s: "decode" });
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [startAt, setStartAt] = useState("");
-  const [timeSource, setTimeSource] = useState<"file" | "recording" | "">("");
+  const [timeSource, setTimeSource] = useState<"file" | "embedded" | "recording" | "">("");
   const [accuracy, setAccuracy] = useState(300);
   const input = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -71,13 +72,21 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
     setError(""); setStage("ready"); setReport(null);
     const url = URL.createObjectURL(file);
     setAudio({ name: file.name, url, blob: file });
-    // a voice memo's "last modified" time is usually when recording stopped
+    // Prefer the recorder's embedded start time (only time is read, never location tags);
+    // otherwise a voice memo's "last modified" time is usually when recording stopped.
+    let embedded: number | null = null;
+    const head = file.slice(0, 4 * 1024 * 1024).arrayBuffer().then(b => { embedded = embeddedRecordingTime(new Uint8Array(b)); }).catch(() => undefined);
     const probe = new Audio(url);
-    probe.onloadedmetadata = () => {
+    probe.onloadedmetadata = async () => {
+      await head;
+      if (embedded) { setStartAt(toLocalInput(embedded * 1000)); setTimeSource("embedded"); setAccuracy(5); return; }
       const dur = isFinite(probe.duration) ? probe.duration : 0;
       setStartAt(toLocalInput(file.lastModified - dur * 1000)); setTimeSource("file"); setAccuracy(300);
     };
-    probe.onerror = () => { setStartAt(toLocalInput(file.lastModified)); setTimeSource("file"); };
+    probe.onerror = async () => {
+      await head;
+      setStartAt(toLocalInput((embedded ?? file.lastModified / 1000) * 1000)); setTimeSource(embedded ? "embedded" : "file");
+    };
   };
   const startRecording = async () => {
     setError("");
@@ -136,14 +145,14 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
           <ResultMap candidates={report.result.candidates} heat={report.result.heat} />
           <div className="result-details"><span className="demo-label">EXPERIMENTAL ESTIMATE · NOT A VERIFIED LOCATION</span><h3>Candidate recording area</h3><p className="coordinates"><MapPin size={14} />{fmtCoord(top.lat, top.lon)}</p><dl>
             <div><dt>Model spread (not guaranteed accuracy)</dt><dd>{Math.round(top.radiusM)} m</dd></div>
-            <div><dt>Matched flyover curves</dt><dd>{top.matched} / {report.events.length}</dd></div>
+            {report.method === "arrival" ? <div><dt>Evidence</dt><dd>Jet-roar arrival</dd></div> : <div><dt>Matched flyover curves</dt><dd>{top.matched} / {report.events.length}</dd></div>}
             <div><dt>Relative fit strength</dt><dd>{report.result.confidence}</dd></div>
             <div><dt>Clock adjustment</dt><dd>{top.clockOffset.toFixed(0)} s</dd></div>
-          </dl>{new Set(top.matches.map(match => match.icao24)).size < 2 && <p>Only one aircraft constraint matched. This is an ambiguous candidate, not triangulation; additional independent flyovers are needed.</p>}<p>Aircraft noise, terrain, wind and incomplete reception can create false matches. Do not use this estimate for rescue or safety decisions.</p></div>
+          </dl>{report.method === "arrival" && <p>No clean falling-pitch curve was found, so this estimate matches when the aircraft's high-pitched roar rose in the recording against archived flight positions, sound-travel delay and air absorption. It points along that aircraft's path, not to an exact spot.</p>}{new Set(top.matches.map(match => match.icao24)).size < 2 && <p>Only one aircraft constraint matched. This is an ambiguous candidate, not triangulation; additional independent flyovers are needed.</p>}<p>Aircraft noise, terrain, wind and incomplete reception can create false matches. Do not use this estimate for rescue or safety decisions.</p></div>
         </div> : <div className="analysis-state" role="status"><AudioLines size={30} /><h3>{report.status === "no-events" ? "No usable flyover curves" : "No aircraft match"}</h3><p>{report.status === "no-events" ? "No sufficiently coherent falling-pitch band was found in 5–800 Hz, including broadened aircraft bands. Audible aircraft alone do not establish a usable curve. No location was calculated." : "The archived aircraft tracks did not explain the recording. No location was calculated."}</p></div>}
         {report.events.some(e => e.uncertain) && <p className="preview-disclaimer">Short or broadened aircraft curves carry extra uncertainty. Any candidate from this evidence has low fit strength.</p>}
         <SpectrogramView spec={report.spectrogram} events={report.events} />
-        {top && <div className="result-details">{top.matches.map(match => <p key={match.eventId}><Plane size={12} className="inline" /> Curve {match.eventId} · {match.callsign || match.icao24} · {fmtClock(match.passedAt)} · {Math.round(match.slant)} m slant · {Math.round(match.speed)} m/s</p>)}</div>}
+        {top && <div className="result-details">{top.matches.map(match => <p key={`${match.eventId}-${match.icao24}`}><Plane size={12} className="inline" /> {match.eventId ? `Curve ${match.eventId}` : "Roar arrival"} · {match.callsign || match.icao24} · {fmtClock(match.passedAt)} · {Math.round(match.slant)} m slant · {Math.round(match.speed)} m/s</p>)}</div>}
         {report.archive && <p className="preview-disclaimer">{report.archive.attribution} · {report.archive.rows.toLocaleString()} positions · {report.archive.days.join(", ")}</p>}
         {report.terrainAttribution && <p className="preview-disclaimer">{report.terrainAttribution} Terrain sampled at approximately 200 m; aircraft altitude and terrain uncertainties remain.</p>}
         <Button variant="outline" onClick={reset}><RotateCcw /> New analysis</Button>
@@ -162,7 +171,7 @@ export default function AudioWorkspace({ demoRequest }: { demoRequest: number })
         {audio && <div className="time-fields">
           <label><span><Clock size={12} /> Recording started</span><input aria-label="Recording started" type="datetime-local" step={1} value={startAt} onChange={e => { setStartAt(e.target.value); setTimeSource(""); }} /></label>
           <label><span>How sure are you of that time?</span><select aria-label="Recording time accuracy" value={accuracy} onChange={e => setAccuracy(Number(e.target.value))}>{ACCURACY.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}</select></label>
-          <p>{timeSource === "file" ? "Filled in from the file's details. Please check it, since copying a file can change this time." : timeSource === "recording" ? "Taken from this device's clock when you started recording." : "Times are in your local time zone."}</p>
+          <p>{timeSource === "embedded" ? "Read from the recorder's embedded start time (location tags are never used)." : timeSource === "file" ? "Filled in from the file's details. Please check it, since copying a file can change this time." : timeSource === "recording" ? "Taken from this device's clock when you started recording." : "Times are in your local time zone."}</p>
         </div>}
         {error && <p role="alert" className="text-destructive mt-4 text-sm">{error}</p>}
         <div className="tool-bottom"><p><Check size={14} /> Your recording stays on this device.</p><Button onClick={analyze} disabled={!audio || recording || !startAt}>Analyze recording <ArrowRight /></Button></div>

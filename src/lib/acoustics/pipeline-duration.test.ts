@@ -5,8 +5,8 @@ import { analyzeRecording } from "./pipeline";
 function recording(duration: number) {
   vi.stubGlobal("window", { OfflineAudioContext: class {
     async decodeAudioData() {
-      return { duration, length: Math.round(duration * 8000), sampleRate: 8000,
-        numberOfChannels: 1, getChannelData: () => new Float32Array(Math.round(duration * 8000)) };
+      return { duration, length: Math.round(duration * 16000), sampleRate: 16000,
+        numberOfChannels: 1, getChannelData: () => new Float32Array(Math.round(duration * 16000)) };
     }
   } });
   return new Blob([new Uint8Array(8)], { type: "audio/mpeg" });

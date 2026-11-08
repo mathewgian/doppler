@@ -1,6 +1,7 @@
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { detectLongEvents } from "./long-events";
+import { bandEnvelope, locateByArrival } from "./arrival";
 import { loadTerrain, terrainElevation, TERRAIN_ATTRIBUTION } from "./terrain";
 import { archiveWindows, CLOCK_WINDOWS, MAX_RECORDING_SECONDS, MAX_SEARCH_POSITIONS } from "./search-rules";
 import { REGION, type DopplerEvent, type FlightTrack } from "./geo";
@@ -19,6 +20,8 @@ export const STAGE_LABELS: Record<Stage, string> = {
 
 export interface AnalysisReport {
   status: "located" | "no-events" | "no-match";
+  /** "doppler": matched tonal flyover curves. "arrival": matched broadband jet-roar arrival (no clean curve). */
+  method?: "doppler" | "arrival";
   duration: number;
   startUnix: number;
   clockSigma: number;
@@ -35,16 +38,36 @@ export class AnalysisError extends Error {}
 async function decodeToMono(blob: Blob) {
   const buf = await blob.arrayBuffer();
   const Ctx = window.OfflineAudioContext || (window as unknown as { webkitOfflineAudioContext: typeof OfflineAudioContext }).webkitOfflineAudioContext;
-  const ctx = new Ctx(1, 1, 8000); // decoding resamples (with anti-aliasing) to 8 kHz
+  const ctx = new Ctx(1, 1, 16000); // decoding resamples (with anti-aliasing) to 16 kHz
   let audio: AudioBuffer;
   try { audio = await ctx.decodeAudioData(buf); } catch { throw new AnalysisError("This audio format couldn't be read by your browser. Try a WAV, MP3 or M4A file."); }
-  const len = Math.floor(audio.length / 2);
-  const out = new Float32Array(len);
+  const wide = new Float32Array(audio.length);
   for (let c = 0; c < audio.numberOfChannels; c++) {
     const d = audio.getChannelData(c);
-    for (let i = 0; i < len; i++) out[i] += (d[2 * i] + d[2 * i + 1]) / (2 * audio.numberOfChannels);
+    for (let i = 0; i < wide.length; i++) wide[i] += d[i] / audio.numberOfChannels;
   }
-  return { samples: out, rate: audio.sampleRate / 2, duration: audio.duration };
+  // 4 kHz stream for the 5–800 Hz Doppler tracker; the 16 kHz stream keeps high-frequency jet roar.
+  return { samples: decimate4(wide), rate: audio.sampleRate / 4, wide, wideRate: audio.sampleRate, duration: audio.duration };
+}
+
+/** Windowed-sinc low-pass (cutoff 0.1 × rate) then keep every 4th sample, so jet roar cannot alias below 800 Hz. */
+export function decimate4(x: Float32Array) {
+  const taps = 63, half = (taps - 1) / 2, fc = 0.1;
+  const h = new Float64Array(taps);
+  let sum = 0;
+  for (let i = 0; i < taps; i++) {
+    const k = i - half;
+    const sinc = k === 0 ? 2 * fc : Math.sin(2 * Math.PI * fc * k) / (Math.PI * k);
+    h[i] = sinc * (0.42 - 0.5 * Math.cos((2 * Math.PI * i) / (taps - 1)) + 0.08 * Math.cos((4 * Math.PI * i) / (taps - 1)));
+    sum += h[i];
+  }
+  const len = Math.floor(x.length / 4), out = new Float32Array(len);
+  for (let j = 0; j < len; j++) {
+    let acc = 0;
+    for (let i = 0; i < taps; i++) { const n = 4 * j + i - half; if (n >= 0 && n < x.length) acc += h[i] * x[n]; }
+    out[j] = acc / sum;
+  }
+  return out;
 }
 
 const archiveSchema = z.object({
@@ -75,15 +98,17 @@ export async function analyzeRecording(blob: Blob, opts: { startUnix: number; cl
   if (blob.size > 50 * 1024 * 1024) throw new AnalysisError("Choose an audio file smaller than 50 MB.");
   const tick = () => new Promise(r => setTimeout(r, 30));
   opts.onStage("decode"); await tick();
-  const { samples, rate, duration } = await decodeToMono(blob);
+  const { samples, rate, wide, wideRate, duration } = await decodeToMono(blob);
   if (duration < 5) throw new AnalysisError("The recording needs to be at least 5 seconds long.");
   if (duration > MAX_RECORDING_SECONDS) throw new AnalysisError("Please trim the recording to 30 minutes or less around the aircraft sounds.");
 
   opts.onStage("listen"); await tick();
   const spectrogram = computeSpectrogram(samples, rate);
   const events = detectLongEvents(spectrogram);
+  const envelope = duration <= 600 ? bandEnvelope(wide, wideRate) : null;
   const base = { duration, startUnix: opts.startUnix, clockSigma: opts.clockSigma, spectrogram, events };
-  if (!events.length) return { ...base, status: "no-events", flights: 0 };
+  const arrivalPossible = !!envelope && envelope.riseDb >= 6;
+  if (!events.length && !arrivalPossible) return { ...base, status: "no-events", flights: 0 };
 
   opts.onStage("flights");
   const obs = toObserved(events, opts.startUnix);
@@ -107,6 +132,13 @@ export async function analyzeRecording(blob: Blob, opts: { startUnix: number; cl
   const terrain = await loadTerrain();
 
   opts.onStage("search", 0);
-  const result = await locate(obs, flights, { clockSigma: opts.clockSigma, clipStart: opts.startUnix, clipEnd: opts.startUnix + duration, spectrogram, elevationAt: (lat, lon) => terrainElevation(terrain, lat, lon), onProgress: p => opts.onStage("search", p) });
-  return { ...base, status: result.candidates.length ? "located" : "no-match", flights: flights.length, result, archive: meta, terrainAttribution: TERRAIN_ATTRIBUTION };
+  const elevationAt = (lat: number, lon: number) => terrainElevation(terrain, lat, lon);
+  const common = { ...base, flights: flights.length, archive: meta, terrainAttribution: TERRAIN_ATTRIBUTION };
+  if (events.length) {
+    const result = await locate(obs, flights, { clockSigma: opts.clockSigma, clipStart: opts.startUnix, clipEnd: opts.startUnix + duration, spectrogram, elevationAt, onProgress: p => opts.onStage("search", arrivalPossible ? p / 2 : p) });
+    if (result.candidates.length || !arrivalPossible) return { ...common, status: result.candidates.length ? "located" : "no-match", method: "doppler", result };
+  }
+  // No clean Doppler curve (or none matched): try the broadband jet-roar arrival evidence.
+  const arrival = await locateByArrival(envelope, flights, { clockSigma: opts.clockSigma, clipStart: opts.startUnix, elevationAt, onProgress: p => opts.onStage("search", events.length ? 0.5 + p / 2 : p) });
+  return { ...common, status: arrival.candidates.length ? "located" : "no-match", method: "arrival", result: arrival };
 }
