@@ -26,6 +26,21 @@ The service-only `public.aircraft_archive_positions` table is ready for validate
 
 The download script **does not load CSVs into the database automatically**. Deduplication uses a disk-backed SQLite index to keep memory bounded. Gzip signatures, rather than filename extensions, identify compressed traces.
 
+### Bounded batch loader
+
+Prepare validated, retry-safe SQL batches (1,000 rows by default; maximum 2,000 rows and 512 KiB per SQL payload):
+
+```bash
+python3 scripts/load-adsblol-batches.py \
+  --csv /tmp/adsblol-july-2025/2025-07-19.csv \
+  --checkpoint /tmp/adsblol-july-2025/2025-07-19.done.json \
+  --output /tmp/adsblol-july-2025/batches --batch-size 1000
+```
+
+Preparation checks every row's UTC date, geographic bounds, finite numbers, provenance, unique position key, and the full extraction count before publishing any SQL. Partial CSVs are refused. Existing output folders are not overwritten. Each position write ignores existing `(source, icao24, observed_at)` keys, so replay after interruption is safe. `complete-day.sql` must run **last**; it records coverage only if the database count matches the validated CSV and the rows have valid bounds/provenance. Confirm that the completed-day record actually exists with the managed read tool afterward; successful execution alone does not establish coverage.
+
+The SQL files can be submitted in order through the managed `run_sql` data-write tool. The loader also supports `--output <existing-batches> --execute-command <approved-adapter>` for automation: that adapter must accept SQL on stdin and return JSON `{"ok": true}` only after a successful managed write. It stops on any failed or ambiguous acknowledgement, suppresses provider output, and replays conflict-safe batches on restart. **No such shell adapter is currently available in this workspace.** The Lovable CLI's database query command is read-only, and this script does not bypass it or use privileged keys. Preparing batches does not load the database or remove this integration limitation.
+
 ## Verified one-day import
 
 November 6, 2026 prod-0 was fully streamed and filtered: 75,277 trace documents, 130,689 regional points, and 130,659 unique `(source, icao24, observed_at)` positions from 344 aircraft. The unique rows were loaded into `aircraft_archive_positions` and read back; timestamps span 00:00:01.89–23:59:58.77 UTC. The other 29 days are not imported.
